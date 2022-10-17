@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "zkPass-extension",
+  "description": "The zkPass browser extension can proxy three parties TLS and generate zero-knowledge proofs",
+  "version": "0.0.1",
+  "author": "zkPass-dev",
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback"
+  ],
+
+  "host_permissions": [
+    "https://app.zkpass.org"
+  ],
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open the popup"
+  },
+  "background": {
+    "service_worker": "static/js/background.js"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "name": "zkpass-extension",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/react": "^13.0.0",
+    "@testing-library/user-event": "^13.2.1",
+    "@types/aes-js": "^3.1.1",
+    "@types/chrome": "^0.0.198",
+    "@types/crypto-js": "^4.1.1",
+    "@types/jest": "^27.0.1",
+    "@types/lodash": "^4.14.186",
+    "@types/node": "^16.7.13",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "aes-js": "^3.1.2",
+    "bitwise": "^2.1.0",
+    "crypto-js": "^4.1.1",
+    "lodash": "^4.17.21",
+    "mathjs": "^11.3.0",
+    "node-salsa20": "^0.2.2",
+    "pkijs": "^3.0.8",
+    "react": "^18.2.0",
+    "react-app-rewired": "^2.2.1",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "simple-js-ec-math": "^2.0.1",
+    "sodium": "^3.0.2",
+    "typescript": "^4.4.2",
+    "web-vitals": "^2.1.0"
+  },
+  "scripts": {
+    "start": "react-app-rewired start",
+    "build": "INLINE_RUNTIME_CHUNK=false react-app-rewired build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
