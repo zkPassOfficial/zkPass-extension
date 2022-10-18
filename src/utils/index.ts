@@ -6,7 +6,12 @@ import NodeSalsa20, { toArrayBuffer } from "../lib/salsa20"
 
 export const equalArray = (a: Array<any> | Uint8Array, b: Array<any> | Uint8Array): boolean => isEqual(a, b)
 
-export const xor = (a: Bits, b: Bits): Bits => bitwise.bits.xor(a, b)
+export const xor = (a: Uint8Array, b: Uint8Array): Uint8Array => {
+  const bits_a = bytes2Bits(ba2Byte(a))
+  const bits_b = bytes2Bits(ba2Byte(b))
+  const ruesult = bitwise.bits.xor(bits_a, bits_b)
+  return new Uint8Array(bits2Bytes(ruesult).map(r => ba2int(r)))
+}
 
 export const ba2Byte = (arr: Uint8Array) => {
   const r_arr: UInt8[] = Array.from(arr).map(x => x as UInt8)
@@ -16,6 +21,35 @@ export const ba2Byte = (arr: Uint8Array) => {
 export const getRandom = (n: Uint8Array): Uint8Array => new Crypto().getRandomValues(n)
 
 export const int2ba = (i: UInt8): Byte => bitwise.byte.read(i)
+
+export const int2U8Array = (i: number, size?: number): Uint8Array => {
+  const arr = []
+  while (i >= 0) {
+    const byte = i & 0xff
+    arr.push(byte)
+    i = (i - byte) / 255
+  }
+  const len = arr.length
+
+  if (size && len < size) {
+    return new Uint8Array(concatArray(Array(size - len), arr))
+  } else if (size && len > size) {
+    return new Uint8Array(arr.splice(0, size))
+  }
+  return new Uint8Array(arr)
+}
+
+export const u8Array2Int = (n: Uint8Array): number => Buffer.from(n).readUIntBE(0, n.length)
+
+export const u8Array2Bits = (n: Uint8Array): Bits => {
+  const byte_arr = []
+
+  for (let i = 0; i < n.length; i++) {
+    byte_arr.push(int2ba(n[i] as UInt8))
+  }
+
+  return bytes2Bits(byte_arr)
+}
 
 export const str2ba = (s: string): Array<0 | 1> => bitwise.string.toBits(s)
 
@@ -49,9 +83,9 @@ export const concatArray = (...args: Array<any>): Uint8Array => {
   return new Uint8Array(arr)
 }
 
-export const splitToChunks = (ba: Byte[], size: number): Array<Byte[]> => {
+export const splitArray = (ba: Uint8Array, size: number): Uint8Array[] => {
   assert(ba.length % size === 0)
-  const result: Array<Byte[]> = []
+  const result = []
 
   for (let i = 0, len = ba.length / size; i < len; i++) {
     result.push(ba.slice(i, i + size))
@@ -67,9 +101,9 @@ export const assert = (condition: boolean, message?: string) => {
   }
 }
 
-export const sha256 = async (ba: Byte) => {
+export const sha256 = async (ba: Uint8Array) => {
 
-  const bits = bytes2Bits([ba])
+  const bits = u8Array2Bits(ba)
 
   const buffer = bitwise.buffer.create(bits)
 
@@ -87,8 +121,6 @@ export const AESCTRdecrypt = (key: Uint8Array, ciphertext: Uint8Array) => {
   const aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(0));
   return aesCtr.decrypt(ciphertext);
 }
-
-
 
 export const Salsa20 = (key: Uint8Array, data: Uint8Array) => {
   //nonce => {'e', 'x', 'p', 'a', 'n', 'd', ' ', '3', '2', '-', 'b', 'y', 't', 'e', ' ', 'k'}
