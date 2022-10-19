@@ -117,14 +117,13 @@ export class OTReceiver extends OTCommon {
     const decCols = []
 
     const unUsedMark = splitArray(this.maskArr, 16).slice(this.receivedCount + 1)
+    const m_arr = splitArray(mBits, 16)
 
     for (let i = 0, len = cBits.length; i < len; i++) {
-      const m0 = mBits.slice(i * 32, i * 32 + 16)
-      const m1 = mBits.slice(i * 32 + 16, i * 32 + 32)
       if (cBits[i] === 0) {
-        decCols.push(xor(m0, unUsedMark[i]))
+        decCols.push(xor(m_arr[i], unUsedMark[i]))
       } else {
-        decCols.push(xor(m1, unUsedMark[i]))
+        decCols.push(xor(m_arr[i + 1], unUsedMark[i]))
       }
     }
 
