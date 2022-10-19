@@ -1,5 +1,5 @@
 import { Bits } from "bitwise/types"
-import sodium from "sodium"
+import sodium from "sodium-universal"
 import { AESCTRdecrypt, assert, concatArray, getRandom, splitArray, u8Array2Bits, equalArray, sha256, xor, u8Array2Int } from "../utils"
 import OTCommon from "./OTCommon"
 
