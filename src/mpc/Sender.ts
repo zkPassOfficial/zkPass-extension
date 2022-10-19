@@ -98,6 +98,41 @@ export default class Sender extends OTCommon {
     this.RQ1 = await this.crhf(Q1.slice(0, -this.extraCount));
   }
 
-  send(){}
+  /**
+   * send message to receiver
+   * 
+   * @param corrCode correction code 
+   * @param message 
+   */
+  send(corrCode: Uint8Array, message: Uint8Array) {
+    if (!this.RQ0 || !this.RQ1) return;
+
+    const fillBits = u8Array2Int(corrCode.slice(0, 1))
+    const contentBitsWithFill = u8Array2Bits(corrCode.slice(1))
+
+    const contentBits = contentBitsWithFill.slice(0, contentBitsWithFill.length - fillBits)
+
+    assert(this.sentCount + contentBits.length <= this.count);
+    assert(contentBits.length * 32 == message.length);
+
+    const encodedToSend = [];
+    for (let i = 0; i < contentBits.length; i++) {
+      const m0 = message.slice(i * 32, i * 32 + 16)
+      const m1 = message.slice(i * 32 + 16, i * 32 + 32)
+
+      const r0 = this.RQ0.slice((this.sentCount + i) * 16, (this.sentCount + i) * 16 + 16)
+      const r1 = this.RQ1.slice((this.sentCount + i) * 16, (this.sentCount + i) * 16 + 16)
+
+      if (contentBits[i] == 0) {
+        encodedToSend.push(xor(m0, r0));
+        encodedToSend.push(xor(m1, r1));
+      } else {
+        encodedToSend.push(xor(m0, r1));
+        encodedToSend.push(xor(m1, r0));
+      }
+    }
+    this.sentCount += contentBits.length;
+    return concatArray(...encodedToSend);
+  }
 
 }

@@ -64,6 +64,8 @@ export const bytes2Bits = (ba: Byte[]): Bits => {
   return bitsArray
 }
 
+export const bits2U8Array = (bits: Bits): Uint8Array => new Uint8Array(bits2Bytes(bits).map(b => ba2int(b)))
+
 export const bits2Bytes = (bits: Bits): Byte[] => {
   assert(bits.length % 8 === 0)
   const bytes: Byte[] = []
