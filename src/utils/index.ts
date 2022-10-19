@@ -22,13 +22,19 @@ export const getRandom = (n: Uint8Array): Uint8Array => new Crypto().getRandomVa
 
 export const int2ba = (i: UInt8): Byte => bitwise.byte.read(i)
 
-export const int2U8Array = (i: number, size?: number): Uint8Array => {
-  const arr = []
-  while (i >= 0) {
-    const byte = i & 0xff
-    arr.push(byte)
-    i = (i - byte) / 255
+export const int2U8Array = (i: number | bigint, size?: number): Uint8Array => {
+
+  let str = i.toString(16)
+
+  if (str.length % 2 === 1) {
+    str = `0${str}`
   }
+
+  const arr = []
+  for (let i = 0; i < str.length / 2; i++) {
+    arr.push(parseInt(str.slice(2 * i, 2 * i + 2), 16))
+  }
+
   const len = arr.length
 
   if (size && len < size) {
@@ -51,7 +57,23 @@ export const u8Array2Bits = (n: Uint8Array): Bits => {
   return bytes2Bits(byte_arr)
 }
 
-export const str2ba = (s: string): Array<0 | 1> => bitwise.string.toBits(s)
+export const str2Bits = (s: string): Array<0 | 1> => bitwise.string.toBits(s)
+
+export const str2U8Array = (s: string): Uint8Array => {
+  const arr = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) {
+    arr[i] = s.charCodeAt(i);
+  }
+  return arr
+}
+
+export const u8Array2Str = (arr: Uint8Array): string => {
+  let s = ''
+  for (const a of arr) {
+    s += String.fromCharCode(a)
+  }
+  return s
+}
 
 export const ba2int = (bits: Byte): UInt8 => bitwise.byte.write(bits)
 
@@ -135,3 +157,5 @@ export const Salsa20 = (key: Uint8Array, data: Uint8Array) => {
   }
 
 }
+
+export const pad = (s: string): string => s.length % 2 === 0 ? s : `0${s}`
