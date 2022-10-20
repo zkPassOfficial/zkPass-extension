@@ -20,6 +20,7 @@
     "bitwise": "^2.1.0",
     "crypto-js": "^4.1.1",
     "elliptic": "^6.5.4",
+    "events": "^3.3.0",
     "lodash": "^4.17.21",
     "mathjs": "^11.3.0",
     "node-salsa20": "^0.2.2",
