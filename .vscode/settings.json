@@ -5,5 +5,11 @@
     "format": true,
     "source.fixAll": true,
     "source.fixAll.eslint": true,
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint"
   }
 }
