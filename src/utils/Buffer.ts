@@ -21,6 +21,11 @@ export default class UintBuffer{
     }
   }
 
+  appendUint8Array(value: Uint8Array){
+    this.expand(value.length)
+    this.setUint8Array(this.bytes.length-value.length,value)
+  }
+
   expand(size:number){
     size = size || 128
     const expanded_buffer = new Uint8Array(this.buffer,0,this.buffer.byteLength + size)
