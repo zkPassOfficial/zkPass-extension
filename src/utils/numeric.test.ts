@@ -10,7 +10,7 @@ import {
   bytes2intLE
 } from './numeric'
 
-describe('numberic',()=>{
+describe('numeric',()=>{
 
   test('uint2bytesBE(0x123456,3)=[0x12, 0x34, 0x56]',()=>{
     const hex = 0x123456
