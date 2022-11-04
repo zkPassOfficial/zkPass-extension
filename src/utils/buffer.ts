@@ -60,6 +60,10 @@ export default class Buffer{
     // }
   }
 
+  seek(cursor:number){
+    this.cursor = cursor
+  }
+
   write(value: number, byteLength: number) {
     value = +value
     byteLength = byteLength >>> 0
