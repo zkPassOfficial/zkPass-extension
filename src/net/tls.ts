@@ -1,4 +1,4 @@
-import { str2U8Array, int2U8Array, getRandom } from '../utils'
+import { getRandom, int2U8Array, str2U8Array } from '../utils'
 import Tcp from './tcp'
 
 export default class Tls {
@@ -20,12 +20,6 @@ export default class Tls {
     this.buffer = new Uint8Array()
     this.tcp = new Tcp(appId, host, port)
 
-    this.tcp.on('data', data => {
-      const buffer = new Uint8Array(this.buffer.length + data.length)
-      buffer.set(this.buffer, 0)
-      buffer.set(data, this.buffer.length)
-      this.buffer = buffer
-    })
     this.clientRandom = new Uint8Array()
     this.clientHello = new Uint8Array()
   }
@@ -60,7 +54,7 @@ export default class Tls {
       + signature_algorithm_extension.length
       + server_name_extension.length
 
-    this.clientRandom = getRandom(new Uint8Array(32))
+    this.clientRandom = getRandom(32)
 
     const client_hello = [
       0x01, // Handshake type: Client Hello
