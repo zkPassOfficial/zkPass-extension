@@ -6,7 +6,6 @@
     "format": true,
     "source.fixAll": true,
     "source.fixAll.eslint": true,
-    "source.organizeImports": true
   },
   "[javascript]": {
     "editor.formatOnSave": true,
@@ -15,7 +14,6 @@
       "format": true,
       "source.fixAll": true,
       "source.fixAll.eslint": true,
-      "source.organizeImports": true
     },
   },
   "[typescript]": {
@@ -25,7 +23,6 @@
       "format": true,
       "source.fixAll": true,
       "source.fixAll.eslint": true,
-      "source.organizeImports": true
     },
   },
   "eslint.validate": [
