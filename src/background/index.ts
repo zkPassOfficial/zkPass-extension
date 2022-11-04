@@ -2,7 +2,6 @@ import './messageListener'
 
 export class Background {
   constructor() {
-
   }
 
   start() {

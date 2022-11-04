@@ -1,7 +1,7 @@
-import { Bits } from "bitwise/types"
-import sodium from "sodium-universal"
-import { AESCTRdecrypt, assert, concatArray, getRandom, splitArray, u8Array2Bits, equalArray, sha256, xor, u8Array2Int } from "../utils"
-import OTCommon from "./OTCommon"
+import { Bits } from 'bitwise/types'
+import sodium from 'sodium-universal'
+import { AESCTRdecrypt, assert, concatArray, getRandom, splitArray, u8Array2Bits, equalArray, sha256, xor, u8Array2Int } from '../utils'
+import OTCommon from './OTCommon'
 
 
 /**
@@ -39,17 +39,17 @@ export default class Sender extends OTCommon {
     this.decKeys = []
 
     for (const bit of this.deltaBits) {
-      const sKeyS = sodium.crypto_core_ristretto255_scalar_random();
-      let pKeyS = sodium.crypto_scalarmult_ristretto255_base(sKeyS);
+      const sKeyS = sodium.crypto_core_ristretto255_scalar_random()
+      let pKeyS = sodium.crypto_scalarmult_ristretto255_base(sKeyS)
       if (bit == 1) {
-        pKeyS = sodium.crypto_core_ristretto255_add(pKeyR, pKeyS);
+        pKeyS = sodium.crypto_core_ristretto255_add(pKeyR, pKeyS)
       }
-      const k = sodium.crypto_generichash(16, sodium.crypto_scalarmult_ristretto255(sKeyS, pKeyR));
-      this.decKeys.push(k);
+      const k = sodium.crypto_generichash(16, sodium.crypto_scalarmult_ristretto255(sKeyS, pKeyR))
+      this.decKeys.push(k)
       keys.push(pKeyS)
     }
 
-    return [concatArray(...keys), this.seedS]
+    return [ concatArray(...keys), this.seedS ]
   }
 
   /**
@@ -61,7 +61,7 @@ export default class Sender extends OTCommon {
    * @param t 
    */
   async extensionSetup(baseColumns: Uint8Array, seedR: Uint8Array, x: Uint8Array, t: Uint8Array) {
-    if (!this.decKeys || !this.deltaBits || !this.seedCommitR || !this.seedS || !this.delta) return;
+    if (!this.decKeys || !this.deltaBits || !this.seedCommitR || !this.seedS || !this.delta) return
 
     assert(seedR.length == 16)
     assert(baseColumns.length % 256 == 0)
@@ -82,20 +82,20 @@ export default class Sender extends OTCommon {
     const Q0 = this.transformToBits(decCols)
     const seed = await this.combineSeedShare(seedR, this.seedS, this.totalCount)
 
-    let q = new Uint8Array(32).fill(0);
+    let q = new Uint8Array(32).fill(0)
     for (let i = 0; i < Q0.length; i++) {
-      const rand = seed.subarray(i * 16, (i + 1) * 16);
+      const rand = seed.subarray(i * 16, (i + 1) * 16)
       q = xor(q, this.ncbm128(Q0[i], rand))
     }
 
     assert(equalArray(t, xor(q, this.ncbm128(x, this.delta))))
 
-    const Q1 = [];
+    const Q1 = []
     for (let i = 0; i < Q0.length; i++) {
-      Q1.push(xor(Q0[i], this.delta));
+      Q1.push(xor(Q0[i], this.delta))
     }
-    this.RQ0 = await this.crhf(Q0.slice(0, -this.extraCount));
-    this.RQ1 = await this.crhf(Q1.slice(0, -this.extraCount));
+    this.RQ0 = await this.crhf(Q0.slice(0, -this.extraCount))
+    this.RQ1 = await this.crhf(Q1.slice(0, -this.extraCount))
   }
 
   /**
@@ -105,17 +105,17 @@ export default class Sender extends OTCommon {
    * @param message 
    */
   send(corrCode: Uint8Array, message: Uint8Array) {
-    if (!this.RQ0 || !this.RQ1) return;
+    if (!this.RQ0 || !this.RQ1) return
 
     const fillBits = u8Array2Int(corrCode.slice(0, 1))
     const contentBitsWithFill = u8Array2Bits(corrCode.slice(1))
 
     const contentBits = contentBitsWithFill.slice(0, contentBitsWithFill.length - fillBits)
 
-    assert(this.sentCount + contentBits.length <= this.count);
-    assert(contentBits.length * 32 == message.length);
+    assert(this.sentCount + contentBits.length <= this.count)
+    assert(contentBits.length * 32 == message.length)
 
-    const encodedToSend = [];
+    const encodedToSend = []
     for (let i = 0; i < contentBits.length; i++) {
       const m0 = message.slice(i * 32, i * 32 + 16)
       const m1 = message.slice(i * 32 + 16, i * 32 + 32)
@@ -124,15 +124,15 @@ export default class Sender extends OTCommon {
       const r1 = this.RQ1.slice((this.sentCount + i) * 16, (this.sentCount + i) * 16 + 16)
 
       if (contentBits[i] == 0) {
-        encodedToSend.push(xor(m0, r0));
-        encodedToSend.push(xor(m1, r1));
+        encodedToSend.push(xor(m0, r0))
+        encodedToSend.push(xor(m1, r1))
       } else {
-        encodedToSend.push(xor(m0, r1));
-        encodedToSend.push(xor(m1, r0));
+        encodedToSend.push(xor(m0, r1))
+        encodedToSend.push(xor(m1, r0))
       }
     }
-    this.sentCount += contentBits.length;
-    return concatArray(...encodedToSend);
+    this.sentCount += contentBits.length
+    return concatArray(...encodedToSend)
   }
 
 }

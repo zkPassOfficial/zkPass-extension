@@ -2,8 +2,8 @@ import { isEqual } from 'lodash'
 import bitwise from 'bitwise'
 import { Bits, Byte, UInt8 } from 'bitwise/types'
 import aesjs from 'aes-js'
-import NodeSalsa20 from "node-salsa20"
-import { randBytesSync } from "bigint-crypto-utils"
+import NodeSalsa20 from 'node-salsa20'
+import { randBytesSync } from 'bigint-crypto-utils'
 
 export const equalArray = (a: Array<any> | Uint8Array, b: Array<any> | Uint8Array): boolean => isEqual(a, b)
 
@@ -61,9 +61,9 @@ export const u8Array2Bits = (n: Uint8Array): Bits => {
 export const str2Bits = (s: string): Array<0 | 1> => bitwise.string.toBits(s)
 
 export const str2U8Array = (s: string): Uint8Array => {
-  const arr = new Uint8Array(s.length);
+  const arr = new Uint8Array(s.length)
   for (let i = 0; i < s.length; i++) {
-    arr[i] = s.charCodeAt(i);
+    arr[i] = s.charCodeAt(i)
   }
   return arr
 }
@@ -122,8 +122,8 @@ export const splitArray = (ba: Uint8Array, size: number): Uint8Array[] => {
 
 export const assert = (condition: boolean, message?: string) => {
   if (!condition) {
-    console.trace();
-    throw message || 'Failed';
+    console.trace()
+    throw message || 'Failed'
   }
 }
 
@@ -135,19 +135,19 @@ export const sha256 = async (ba: Uint8Array) => {
 }
 
 export const AESCTRencrypt = (key: Uint8Array, data: Uint8Array) => {
-  const aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(0));
-  return aesCtr.encrypt(data);
+  const aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(0))
+  return aesCtr.encrypt(data)
 }
 
 export const AESCTRdecrypt = (key: Uint8Array, ciphertext: Uint8Array) => {
-  const aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(0));
-  return aesCtr.decrypt(ciphertext);
+  const aesCtr = new aesjs.ModeOfOperation.ctr(key, new aesjs.Counter(0))
+  return aesCtr.decrypt(ciphertext)
 }
 
 export const Salsa20 = (key: Uint8Array, data: Uint8Array) => {
   //nonce => {'e', 'x', 'p', 'a', 'n', 'd', ' ', '3', '2', '-', 'b', 'y', 't', 'e', ' ', 'k'}
-  const nonce = new Uint8Array([101, 120, 112, 97, 110, 100, 32, 51, 50, 45, 98, 121, 116, 101, 32, 107]);
-  const encryptor = new NodeSalsa20({ rounds: 20 });
+  const nonce = new Uint8Array([ 101, 120, 112, 97, 110, 100, 32, 51, 50, 45, 98, 121, 116, 101, 32, 107 ])
+  const encryptor = new NodeSalsa20({ rounds: 20 })
   encryptor.key(key).nonce(nonce)
 
   if (encryptor.encrypt) {

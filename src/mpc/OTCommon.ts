@@ -1,5 +1,5 @@
 import { Bits, Byte, UInt8 } from 'bitwise/types'
-import { ba2Byte, bytes2Bits, getRandom, xor, splitArray, AESCTRencrypt, Salsa20, concatArray, int2U8Array, u8Array2Bits, u8Array2Int, bits2Bytes, ba2int } from "../utils"
+import { ba2Byte, bytes2Bits, getRandom, xor, splitArray, AESCTRencrypt, Salsa20, concatArray, int2U8Array, u8Array2Bits, u8Array2Int, bits2Bytes, ba2int } from '../utils'
 
 // common methods for sender and receiver
 export default class OTCommon {
@@ -15,14 +15,14 @@ export default class OTCommon {
   }
 
   secretShare(rMatrix: Array<Uint8Array>) {
-    const T0 = [];
-    const T1 = [];
+    const T0 = []
+    const T1 = []
     for (let i = 0; i < rMatrix.length; i++) {
-      const r = getRandom(new Uint8Array(16));
-      T0.push(r);
-      T1.push(xor(rMatrix[i], r));
+      const r = getRandom(new Uint8Array(16))
+      T0.push(r)
+      T1.push(xor(rMatrix[i], r))
     }
-    return [T0, T1];
+    return [ T0, T1 ]
   }
 
   transformToBits(data: Array<Uint8Array>): Uint8Array[] {
@@ -35,11 +35,11 @@ export default class OTCommon {
   ncbm128(a: Uint8Array, b: Uint8Array) {
     const bits_a = u8Array2Bits(a)
     const int_b = u8Array2Int(b)
-    let res = 0;
+    let res = 0
 
     for (let i = 0; i < 128; i++) {
       if (bits_a[i]) {
-        res ^= (int_b << i);
+        res ^= (int_b << i)
       }
     }
 
@@ -48,7 +48,7 @@ export default class OTCommon {
 
   async combineSeedShare(senderSeed: Uint8Array, receiverSeed: Uint8Array, count: number) {
     const seed = xor(senderSeed, receiverSeed)
-    return await AESCTRencrypt(seed, new Uint8Array(count * 16).fill(0));
+    return await AESCTRencrypt(seed, new Uint8Array(count * 16).fill(0))
   }
 
   async keyCipher(message: Uint8Array) {

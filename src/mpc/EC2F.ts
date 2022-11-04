@@ -1,7 +1,7 @@
 import type { PublicKey as PublicKeyType } from 'paillier-bigint'
 import { PublicKey } from 'paillier-bigint'
-import { ec as EC } from "elliptic"
-import { modPow, randBetween, modInv } from "bigint-crypto-utils"
+import { ec as EC } from 'elliptic'
+import { modPow, randBetween, modInv } from 'bigint-crypto-utils'
 
 import { concatArray, int2U8Array, pad, str2U8Array, u8Array2Str } from '../utils'
 

@@ -1,7 +1,7 @@
-import sodium from "sodium-universal"
-import { Bits } from "bitwise/types"
-import OTCommon from "./OTCommon"
-import { AESCTRencrypt, assert, concatArray, getRandom, int2U8Array, sha256, splitArray, u8Array2Bits, xor, bits2U8Array } from "../utils"
+import sodium from 'sodium-universal'
+import { Bits } from 'bitwise/types'
+import OTCommon from './OTCommon'
+import { AESCTRencrypt, assert, concatArray, getRandom, int2U8Array, sha256, splitArray, u8Array2Bits, xor, bits2U8Array } from '../utils'
 
 /**
  * Based KOS15 protocol
@@ -20,7 +20,7 @@ export class OTReceiver extends OTCommon {
   cBitsSend = 0
   receivedCount = 0
   constructor(count: number) {
-    super();
+    super()
     this.count = count
     this.totalCount = Math.ceil(count / 8) * 8 + this.extraCount
     this.rBits = []
@@ -31,26 +31,26 @@ export class OTReceiver extends OTCommon {
     this.seedS = getRandom(new Uint8Array(16))
     const seedCommit = await sha256(this.seedS)
     const r = getRandom(new Uint8Array(this.totalCount / 8))
-    const R = this.extendRTo128(r);
+    const R = this.extendRTo128(r)
     this.rBits = u8Array2Bits(r).reverse();
 
-    [this.T0, this.T1] = this.secretShare(R);
+    [ this.T0, this.T1 ] = this.secretShare(R)
 
-    this.sKeyR = sodium.crypto_core_ristretto255_scalar_random();
-    this.pKeyS = sodium.crypto_scalarmult_ristretto255_base(this.sKeyR);
-    return [this.pKeyS, seedCommit];
+    this.sKeyR = sodium.crypto_core_ristretto255_scalar_random()
+    this.pKeyS = sodium.crypto_scalarmult_ristretto255_base(this.sKeyR)
+    return [ this.pKeyS, seedCommit ]
   }
 
   async extensionSetup(keys: Uint8Array, seedS: Uint8Array) {
     if (!this.T0 || !this.T1 || !this.seedS || !this.rBits) return
 
-    assert(keys.length == 128 * 32);
-    assert(seedS.length == 16);
+    assert(keys.length == 128 * 32)
+    assert(seedS.length == 16)
 
-    const encCols = [];
+    const encCols = []
 
-    const T0 = this.transformToBits(this.T0);
-    const T1 = this.transformToBits(this.T1);
+    const T0 = this.transformToBits(this.T0)
+    const T1 = this.transformToBits(this.T1)
 
     const pKeyS_arr = splitArray(keys, 32)
 
@@ -77,11 +77,11 @@ export class OTReceiver extends OTCommon {
       t = xor(t, this.ncbm128(this.T0[i], rand))
     }
 
-    this.maskArr = await this.crhf(this.T0.slice(0, -this.extraCount));
+    this.maskArr = await this.crhf(this.T0.slice(0, -this.extraCount))
 
-    this.rBits = this.rBits.slice(0, -this.extraCount);
+    this.rBits = this.rBits.slice(0, -this.extraCount)
 
-    return [concatArray(...encCols), this.seedS, x, t];
+    return [ concatArray(...encCols), this.seedS, x, t ]
   }
   /**
    * send choices bits to sender
@@ -91,7 +91,7 @@ export class OTReceiver extends OTCommon {
   send(cBits: Uint8Array) {
     assert(this.receivedCount + cBits.length <= this.count)
 
-    assert(this.cBitsSend == 0);
+    assert(this.cBitsSend == 0)
 
     const sentBits = cBits.map((b, i) => b ^ this.rBits[this.receivedCount + i])
 
@@ -99,9 +99,9 @@ export class OTReceiver extends OTCommon {
 
     const fill_arr = Array(fill_len).fill(0)
 
-    this.cBitsSend = cBits.length;
+    this.cBitsSend = cBits.length
 
-    return concatArray(int2U8Array(fill_len, 1), bits2U8Array([...sentBits, ...fill_arr]));
+    return concatArray(int2U8Array(fill_len, 1), bits2U8Array([ ...sentBits, ...fill_arr ]))
   }
 
   /**
@@ -127,9 +127,9 @@ export class OTReceiver extends OTCommon {
       }
     }
 
-    this.receivedCount += cBits.length;
-    this.cBitsSend = 0;
+    this.receivedCount += cBits.length
+    this.cBitsSend = 0
 
-    return concatArray(...decCols);
+    return concatArray(...decCols)
   }
 }
