@@ -1,5 +1,4 @@
-import { EventEmitter } from 'events'
-import {concat} from '../utils/typedarray'
+import Buffer from '../utils/buffer'
 
 enum StatusCode {
   SUCCESS = 0,
@@ -15,7 +14,7 @@ export enum ConnectState {
 
 const DeadLineTime = 15 * 1000
 
-export default class Tcp extends EventEmitter{
+export default class Tcp{
   socketProxy: string
   host: string
   port: number
@@ -23,16 +22,15 @@ export default class Tcp extends EventEmitter{
   state: ConnectState
   currentState?: ConnectState
   timer: any
-  buffer: Uint8Array
+  buffer: Buffer
 
   constructor(socketProxy: string, host: string, port: number) {
-    super()
     this.socketProxy = socketProxy
     this.host = host
     this.port = port
     
     this.socketId = 0
-    this.buffer = new Uint8Array(0)
+    this.buffer = new Buffer(128)
     this.state = ConnectState.CLOSED
   }
 
@@ -80,8 +78,7 @@ export default class Tcp extends EventEmitter{
     this.timer = setInterval(async () => {
       const data = await this.receive()
       if(data?.keys.length>0){
-        this.buffer=concat(this.buffer,new Uint8Array(data.values))
-        this.emit('data')
+        this.buffer.writeBytes(new Uint8Array(data.values))
       }
     }, 100)
 
@@ -115,7 +112,7 @@ export default class Tcp extends EventEmitter{
       await this._sendMessage({ action: 'close', socketId: this.socketId })
       this.state = ConnectState.CLOSED
       clearInterval(this.timer)
-      this.buffer = new Uint8Array(0)
+      this.buffer.drain()
       this.socketId = 0
     }
     else{
