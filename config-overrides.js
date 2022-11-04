@@ -1,10 +1,10 @@
 /* config-overrides.js */
-let path = require('path');
+let path = require('path')
+let _ = require('lodash')
 
 module.exports = function override(config, env) {
   //do stuff with the webpack config...
-  return {
-    ...config,
+  const res = _.merge(config, {
     entry: {
       main: './src/index.tsx',
       background: './src/background/index.ts',
@@ -17,5 +17,19 @@ module.exports = function override(config, env) {
       assetModuleFilename: 'static/media/[name].[ext]',
       publicPath: '/'
     },
-  }
+    resolve: {
+      fallback: {
+        path: require.resolve("path-browserify")
+      }
+    },
+    module: {
+      rules: [
+        {
+          test: /\.worker\.ts$/,
+          loader: "worker-loader",
+        },
+      ],
+    },
+  })
+  return res
 }
