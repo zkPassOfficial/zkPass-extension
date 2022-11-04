@@ -1,99 +1,126 @@
-import { EventEmitter } from "events";
+import { EventEmitter } from 'events'
+import {concat} from '../utils/typedarray'
 
 enum StatusCode {
   SUCCESS = 0,
   ERROR = 1
 }
 
-enum ConnectState {
-  CONNECTED = "connected",
-  CLOSED = "closed"
+export enum ConnectState {
+  CLOSED = 0,
+  CLOSING = 1,
+  CONNECTING = 8,
+  CONNECTED = 9,
 }
 
 const DeadLineTime = 15 * 1000
 
-export default class Tcp extends EventEmitter {
-  appId: string;
-  host: string;
-  port: number;
-  socketId: number;
-  state: ConnectState;
-  // buffer: Uint8Array;
-  timer: any;
+export default class Tcp extends EventEmitter{
+  socketProxy: string
+  host: string
+  port: number
+  socketId: number
+  state: ConnectState
   currentState?: ConnectState
+  timer: any
+  buffer: Uint8Array
 
-  constructor(appId: string, host: string, port: number) {
+  constructor(socketProxy: string, host: string, port: number) {
     super()
-    this.appId = appId
+    this.socketProxy = socketProxy
     this.host = host
     this.port = port
-    this.state = ConnectState.CLOSED
+    
     this.socketId = 0
-    // this.buffer = new Uint8Array()
-
-    this.timer = setInterval(() => {
-      if (this.state == ConnectState.CONNECTED) {
-        this.receive()
-      }
-    }, 100)
+    this.buffer = new Uint8Array(0)
+    this.state = ConnectState.CLOSED
   }
 
-  async _sendMessage(data: object) {
-    let res = await chrome.runtime.sendMessage(this.appId, data);
-    return res;
+  str2ba(str:string) {
+    const ba = []
+    for (let i = 0; i < str.length; i++) {
+      ba.push(str.charCodeAt(i))
+    }
+    return ba
   }
 
-  setTimeout(timeout: number) {
-    console.log("timeout", timeout)
+
+  async _sendMessage( data: object) {
+    
+    const res = await chrome.runtime.sendMessage(this.socketProxy, data)
+    //error occurred
+    if (chrome.runtime.lastError || res.code !== StatusCode.SUCCESS) {
+      console.log(res.code,res.error)
+      //todo transfer the error to render
+      // chrome.runtime.sendMessage(res.data)
+    }
+
+    return res
   }
 
   async connect() {
 
-    const timer = setTimeout(() => {
-      throw new Error('connect time out');
-    }, DeadLineTime)
-
-    let res = await this._sendMessage({ action: "connect", host: this.host, port: this.port })
-
-    clearTimeout(timer)
-
-    if (chrome.runtime.lastError || res.code == StatusCode.ERROR) {
-      throw new Error(res.mes);
+    if(this.state !== ConnectState.CLOSED){
+      return
     }
 
-    this.socketId = res.mes
+    this.state = ConnectState.CONNECTING
+    const timeout = setTimeout(() => {
+      this.state = ConnectState.CLOSED
+      throw new Error('connect time out')
+    }, DeadLineTime)
+
+    const res = await this._sendMessage({ action: 'connect', host: this.host, port: this.port })
+
+    clearTimeout(timeout)
+
+    this.socketId = res.data
     this.state = ConnectState.CONNECTED
 
-    return res.mes
+    this.timer = setInterval(async () => {
+      const data = await this.receive()
+      if(data?.keys.length>0){
+        this.buffer=concat(this.buffer,new Uint8Array(data.values))
+        this.emit('data')
+      }
+    }, 100)
+
+    return res.data
   }
 
   async receive() {
-    const res = await this._sendMessage({ action: "recv", socketId: this.socketId });
-
-    if (chrome.runtime.lastError || res.code == StatusCode.ERROR) {
-      throw new Error(res.mes);
-    }
-
-    if (res.mes.length > 0) {
-      this.emit("data",res.mes)
+    if(this.state === ConnectState.CONNECTED){
+      const res = await this._sendMessage({ action: 'drain', socketId: this.socketId })
+      //sender bytes: [69, 99, 104, 111, 32]
+      //res.data: {0: 69, 1: 99, 2: 104, 3: 111, 4: 32}
+      return res.data
+    }else{
+      console.log('Connection Error',this.state)
     }
   }
 
-  async send(data: Uint8Array) {
-    const res = await this._sendMessage({ action: "send", socketId: this.socketId, data: Array.from(data) });
-
-    if (chrome.runtime.lastError || res.code == StatusCode.ERROR) {
-      throw new Error(res.mes);
+  async send(data: []) {
+    if(this.state === ConnectState.CONNECTED){
+      const res = await this._sendMessage({ action: 'send', socketId: this.socketId, data })
+      return res.data
     }
-
-    return res.mes
+    else{
+      console.log('Connection Error',this.state)
+    }
   }
 
-  async close() {
-    const res = await this._sendMessage({ action: "close", socketId: this.socketId });
-    this.state = ConnectState.CLOSED;
-    clearInterval(this.timer);
-    return res.mes
+  async close() {   
+    if(this.state === ConnectState.CONNECTED){
+      this.state = ConnectState.CLOSING
+      await this._sendMessage({ action: 'close', socketId: this.socketId })
+      this.state = ConnectState.CLOSED
+      clearInterval(this.timer)
+      this.buffer = new Uint8Array(0)
+      this.socketId = 0
+    }
+    else{
+      console.log('Connection Error',this.state)
+    }
   }
 
 }
