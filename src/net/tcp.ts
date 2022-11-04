@@ -30,7 +30,7 @@ export default class Tcp{
     this.port = port
     
     this.socketId = 0
-    this.buffer = new Buffer(128)
+    this.buffer = new Buffer()
     this.state = ConnectState.CLOSED
   }
 
@@ -96,7 +96,7 @@ export default class Tcp{
     }
   }
 
-  async send(data: []) {
+  async send(data: Array<number>) {
     if(this.state === ConnectState.CONNECTED){
       const res = await this._sendMessage({ action: 'send', socketId: this.socketId, data })
       return res.data

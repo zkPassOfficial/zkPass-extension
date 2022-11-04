@@ -9,9 +9,15 @@ export default class Buffer{
   offset: number //write offset
   cursor: number //read cursor
 
-  constructor(byteLength:number){
-    byteLength = byteLength>>>0 || BUFFER_GROW_SIZE
-    this.bytes = new Uint8Array(byteLength)
+  constructor(options?:{bytes?:Uint8Array,byteLength?:number}){
+    if(options?.bytes){
+      this.bytes = options.bytes
+    }else if(options?.byteLength){
+      const byteLength = options.byteLength >>>0
+      this.bytes = new Uint8Array(byteLength)
+    }else{
+      this.bytes = new Uint8Array(BUFFER_GROW_SIZE)
+    }
     this.offset = 0
     this.cursor = 0
   }
@@ -34,24 +40,24 @@ export default class Buffer{
     this.bytes = bytes
   }
 
-  shift(size: number){
-    size = size>>>0
-    if(size>=this.bytes.length){
-      return this.drain()
-    }else{
-      const head = new Uint8Array(this.bytes,0,size)
-      const tail = new Uint8Array(this.bytes,size,this.bytes.length-size)
-      this.bytes = tail
-      this.cursor = Math.max(0,this.cursor-size)
-      this.offset = Math.max(0,this.offset-size)
-      return head
-    }
+  region(begin:number,byteLength:number){
+    const buffer = new Buffer({byteLength})
+    buffer.writeBytes(this.peekBytes(begin,length))
+    return buffer
   }
 
-  peek(cursor:number){
-    if(cursor>=0 && cursor<this.offset){
-      return this.bytes[cursor]
-    }
+  shift(size: number){
+    size = size>>>0
+    // if(size>=this.bytes.length){
+    //   return this.drain()
+    // }else{
+    const head = this.bytes.slice(0, size) 
+    const tail = this.bytes.slice(size, this.bytes.length-size)
+    this.bytes = tail
+    this.cursor = Math.max(0,this.cursor-size)
+    this.offset = Math.max(0,this.offset-size)
+    return new Buffer({bytes:head})
+    // }
   }
 
   write(value: number, byteLength: number) {
@@ -135,6 +141,42 @@ export default class Buffer{
 
   readUint32(){
     return this.read(4)
+  }
+
+  peek(cursor:number, byteLength: number){
+    let offset = byteLength >>> 0
+
+    let val = this.bytes[cursor + --offset]
+    let mul = 1
+
+    while (offset > 0 && (mul *= 0x100)) {
+      val += this.bytes[cursor + --offset] * mul
+    }
+
+    return val
+  }
+  
+  peekBytes(begin:number,length:number){
+    const end = begin+length
+    // if(begin >= 0 && end < this.offset){
+    return this.bytes.slice(begin, end)
+    // }
+  }
+
+  peekUint8(cursor:number){
+    return this.peek(cursor,1)
+  }
+
+  peekUint16(cursor:number){
+    return this.peek(cursor,2)
+  }
+
+  peekUint24(cursor:number){
+    return this.peek(cursor,3)
+  }
+
+  peekUint32(cursor:number){
+    return this.peek(cursor,4)
   }
 
 }
