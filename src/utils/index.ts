@@ -1,9 +1,9 @@
-import { isEqual } from 'lodash'
+import aesjs from 'aes-js'
+import { randBytesSync } from 'bigint-crypto-utils'
 import bitwise from 'bitwise'
 import { Bits, Byte, UInt8 } from 'bitwise/types'
-import aesjs from 'aes-js'
+import { isEqual } from 'lodash'
 import NodeSalsa20 from 'node-salsa20'
-import { randBytesSync } from 'bigint-crypto-utils'
 
 export const equalArray = (a: Array<any> | Uint8Array, b: Array<any> | Uint8Array): boolean => isEqual(a, b)
 
@@ -159,3 +159,5 @@ export const Salsa20 = (key: Uint8Array, data: Uint8Array) => {
 }
 
 export const pad = (s: string): string => s.length % 2 === 0 ? s : `0${s}`
+
+export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve , ms))
