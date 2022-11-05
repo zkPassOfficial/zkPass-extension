@@ -18,7 +18,7 @@
   },
   "[typescript]": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.defaultFormatter": "dbaeumer.vscode-eslint",
     "editor.codeActionsOnSave": {
       "format": true,
       "source.fixAll": true,
@@ -37,4 +37,7 @@
   "eslint.codeActionsOnSave.mode": "problems",
   "eslint.run": "onSave",
   "eslint.useESLintClass": true,
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
 }
