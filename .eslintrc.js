@@ -51,6 +51,7 @@ module.exports = {
     'no-case-declarations': 'off',
     'no-multi-spaces': 'error',
     'array-bracket-spacing': [ 'error', 'always' ],
+    '@typescript-eslint/no-explicit-any': 'off',
   },
   globals: {
     chrome: true

@@ -1,5 +1,5 @@
 import { Bits } from 'bitwise/types'
-import sodium from 'sodium-universal'
+import _sodium from 'libsodium-wrappers-sumo'
 import { AESCTRdecrypt, assert, concatArray, getRandom, splitArray, u8Array2Bits, equalArray, sha256, xor, u8Array2Int } from '../utils'
 import OTCommon from './OTCommon'
 
@@ -17,11 +17,17 @@ export default class Sender extends OTCommon {
   seedS?: Uint8Array
   RQ0?: Uint8Array
   RQ1?: Uint8Array
+  sodium?: any
   sentCount = 0
   constructor(count: number) {
     super()
     this.count = count
     this.totalCount = Math.ceil(count / 8) * 8 + this.extraCount
+  }
+
+  async init() {
+    await _sodium.ready
+    this.sodium = _sodium
   }
   /**
    * exchange key with receiver
@@ -31,20 +37,20 @@ export default class Sender extends OTCommon {
    */
   keySetup(pKeyR: Uint8Array, seedCommitR: Uint8Array) {
     this.seedCommitR = seedCommitR
-    this.seedS = getRandom(new Uint8Array(16))
-    this.delta = getRandom(new Uint8Array(16))
-    this.deltaBits = u8Array2Bits(this.delta).reverse()
-
+    this.seedS = getRandom(16)
+    this.delta = getRandom(16)
+    // this.delta = new Uint8Array(16).fill(0)
+    this.deltaBits = u8Array2Bits(this.delta)
     const keys = []
     this.decKeys = []
 
     for (const bit of this.deltaBits) {
-      const sKeyS = sodium.crypto_core_ristretto255_scalar_random()
-      let pKeyS = sodium.crypto_scalarmult_ristretto255_base(sKeyS)
+      const sKeyS = this.sodium?.crypto_core_ristretto255_scalar_random()
+      let pKeyS = this.sodium?.crypto_scalarmult_ristretto255_base(sKeyS)
       if (bit == 1) {
-        pKeyS = sodium.crypto_core_ristretto255_add(pKeyR, pKeyS)
+        pKeyS = this.sodium?.crypto_core_ristretto255_add(pKeyR, pKeyS)
       }
-      const k = sodium.crypto_generichash(16, sodium.crypto_scalarmult_ristretto255(sKeyS, pKeyR))
+      const k = this.sodium?.crypto_generichash(16, this.sodium?.crypto_scalarmult_ristretto255(sKeyS, pKeyR))
       this.decKeys.push(k)
       keys.push(pKeyS)
     }
@@ -67,7 +73,7 @@ export default class Sender extends OTCommon {
     assert(baseColumns.length % 256 == 0)
     assert(equalArray(await sha256(seedR), this.seedCommitR), 'Bad seed commit')
 
-    const encCols = splitArray(baseColumns, 256)
+    const encCols = splitArray(baseColumns, baseColumns.length / 256)
 
     const decCols = []
 
@@ -79,23 +85,34 @@ export default class Sender extends OTCommon {
       }
     }
 
-    const Q0 = this.transformToBits(decCols)
+    const Q0 = this.transposeMatrix(decCols)
+
+    console.log('Q0', Q0[30])
+
     const seed = await this.combineSeedShare(seedR, this.seedS, this.totalCount)
 
     let q = new Uint8Array(32).fill(0)
-    for (let i = 0; i < Q0.length; i++) {
+
+    Q0.forEach((v, i) => {
       const rand = seed.subarray(i * 16, (i + 1) * 16)
-      q = xor(q, this.ncbm128(Q0[i], rand))
-    }
+      q = xor(q, this.ncbm128(v, rand))
+    })
 
-    assert(equalArray(t, xor(q, this.ncbm128(x, this.delta))))
+    console.log('x', x)
+    console.log('q', q)
+    console.log('ncbm128', this.ncbm128(x, this.delta))
+    console.log('t', t)
+    console.log('xor', xor(q, this.ncbm128(x, this.delta)))
 
-    const Q1 = []
-    for (let i = 0; i < Q0.length; i++) {
-      Q1.push(xor(Q0[i], this.delta))
-    }
-    this.RQ0 = await this.crhf(Q0.slice(0, -this.extraCount))
-    this.RQ1 = await this.crhf(Q1.slice(0, -this.extraCount))
+
+    // assert(equalArray(t, xor(q, this.ncbm128(x, this.delta))))
+
+    // const Q1 = [];
+    // for (let i = 0; i < Q0.length; i++) {
+    //   Q1.push(xor(Q0[i], this.delta));
+    // }
+    // this.RQ0 = await this.crhf(Q0.slice(0, -this.extraCount));
+    // this.RQ1 = await this.crhf(Q1.slice(0, -this.extraCount));
   }
 
   /**
