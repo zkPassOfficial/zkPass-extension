@@ -32,4 +32,9 @@
   "[jsonc]": {
     "editor.defaultFormatter": "vscode.json-language-features"
   },
+  "typescript.format.enable": false,
+  "eslint.alwaysShowStatus": true,
+  "eslint.codeActionsOnSave.mode": "problems",
+  "eslint.run": "onSave",
+  "eslint.useESLintClass": true,
 }
