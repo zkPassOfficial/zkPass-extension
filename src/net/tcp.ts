@@ -77,7 +77,8 @@ export default class Tcp{
 
     this.timer = setInterval(async () => {
       const data = await this.receive()
-      if(data?.keys.length>0){
+      // if(data?.keys.length>0){
+      if(data){
         this.buffer.writeBytes(new Uint8Array(data.values))
       }
     }, 100)

@@ -80,7 +80,7 @@ export default class Tls {
   port: number
   tcp: Tcp
   clientRandom: Uint8Array
-  clientHello: Buffer
+  allHandshakes: Buffer
  
   //received records
   records : Array<any>
@@ -93,7 +93,7 @@ export default class Tls {
 
     this.tcp = new Tcp(appId, host, port)
     this.clientRandom = new Uint8Array(0)
-    this.clientHello = new Buffer()
+    this.allHandshakes = new Buffer()
     this.records=[]
   }
 
@@ -148,32 +148,38 @@ export default class Tls {
     buf.writeBytes(signature_algorithm_extension)
     buf.writeBytes(server_name_extension)
 
-    this.clientHello = buf
+    const clientHello = buf.peekBytes(0,buf.offset)
+
+    this.allHandshakes = buf
 
     const record_header = new Uint8Array([
       0x16, // Type: Handshake
       0x03, 0x03, // Version: TLS 1.2
-      ...uint2bytesBE(buf.offset, 2) // Length
+      ...uint2bytesBE(clientHello.length, 2) // Length
     ])
 
-    const record = concat(record_header, buf.bytes)
+    const record = [ ...record_header, ...clientHello ]
 
     return record
   }
 
   async sendClientHello() {
     const record = this.createClientHello()
-    await this.tcp.connect()
+    const socketId = await this.tcp.connect()
+    console.log('socketIddddd',socketId)
 
     this.step = Step.CLIENT_HELLO
-    await this.tcp.send(Array.from(record))
+    const sendRes = await this.tcp.send(record)
+    console.log('sendRes',sendRes)
 
     this.step = Step.SERVER_HELLO
-    await this.receiveRecords()
+    const recvRes = await this.receiveRecords()
+    console.log('recvRes',recvRes)
+
     console.log(this.step,this.records)
 
 
-    this.step = Step.CLIENT_FINISH
+    // this.step = Step.CLIENT_FINISH
   }
 
   stepFinished(){
@@ -281,7 +287,7 @@ export default class Tls {
 
     if(header.type === RecordSchema.ContentType.HANDSHAKE){
       content = this.parseHandshake(buf)
-      this.clientHello.writeBytes(buf.peekBytes(5, HANDSHAKE_HEADER_LEN + content.header.length))
+      this.allHandshakes.writeBytes(buf.peekBytes(5, HANDSHAKE_HEADER_LEN + content.header.length))
     }else{
       throw('not implemented now!')
     }
