@@ -19,14 +19,16 @@ module.exports = function override(config, env) {
     },
     resolve: {
       fallback: {
-        path: require.resolve("path-browserify")
+        path: require.resolve('path-browserify'),
+        crypto: require.resolve('crypto-browserify'),
+        stream: require.resolve('stream-browserify')
       }
     },
     module: {
       rules: [
         {
           test: /\.worker\.ts$/,
-          loader: "worker-loader",
+          loader: 'worker-loader',
         },
       ],
     },
