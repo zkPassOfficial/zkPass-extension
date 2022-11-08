@@ -3,6 +3,7 @@ import { NodeInfo } from '../mpc/types'
 import HttpSession from './httpSession'
 import RequestHandler from './requestHandler'
 import { EventType } from './types'
+import '../net'
 
 
 export class Background {
@@ -35,7 +36,7 @@ export class Background {
   }
 
 }
-
+console.log('zkpass extension installed!', new Date().toLocaleTimeString())
 const background = new Background()
 
 background.start()

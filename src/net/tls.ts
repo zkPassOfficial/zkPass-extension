@@ -3,7 +3,6 @@ import { uint2bytesBE } from '../utils/numeric'
 import { str2bytes } from '../utils/string'
 import Tcp from './tcp'
 import Buffer from '../utils/buffer'
-import { concat } from '../utils/typedarray'
 
 const RecordSchema = {
   Version : 0x0303,//tls 1.2
@@ -12,21 +11,21 @@ const RecordSchema = {
     DEFLATE: 1
   },
   ContentType :{
-    CHANGE_CIPHER_SPEC: 0x20,
-    ALERT: 0x21,
-    HANDSHAKE: 0x22,
-    APPLICATION_DATA: 0x23,
-    HEARTBEAT: 0x24
+    CHANGE_CIPHER_SPEC: 20,
+    ALERT: 21,
+    HANDSHAKE: 22,
+    APPLICATION_DATA: 23,
+    HEARTBEAT: 24
   },
   HandshakeType : {
-    HELLO_REQUEST:0x00,
-    CLIENT_HELLO: 0x01,
-    SERVER_HELLO: 0x02,
-    CLIENT_KEY_EXCHANGE: 0x16,
-    CERTIFICATE: 0x11,
-    SERVER_KEY_EXCHANGE: 0x12,
-    SERVER_HELLO_DONE: 0x14,
-    FINISHED: 0x20
+    HELLO_REQUEST:0,
+    CLIENT_HELLO: 1,
+    SERVER_HELLO: 2,
+    CLIENT_KEY_EXCHANGE: 16,
+    CERTIFICATE: 11,
+    SERVER_KEY_EXCHANGE: 12,
+    SERVER_HELLO_DONE: 14,
+    FINISHED: 20
   },
   CipherSuites:{
     TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:0xc02f
@@ -166,24 +165,18 @@ export default class Tls {
   async sendClientHello() {
     const record = this.createClientHello()
     const socketId = await this.tcp.connect()
-    console.log('socketIddddd',socketId)
 
     this.step = Step.CLIENT_HELLO
     const sendRes = await this.tcp.send(record)
-    console.log('sendRes',sendRes)
 
     this.step = Step.SERVER_HELLO
-    const recvRes = await this.receiveRecords()
-    console.log('recvRes',recvRes)
-
-    console.log(this.step,this.records)
-
-
-    // this.step = Step.CLIENT_FINISH
+    await this.receiveRecords()
+    this.step = Step.CLIENT_FINISH
   }
 
   stepFinished(){
-    switch (this.step) {    
+    console.log('check finished',this.step,this.records.length)
+    switch (this.step) {
       case Step.SERVER_HELLO:
         return this.records.length==4
       case Step.SERVER_FINISH:
@@ -233,13 +226,14 @@ export default class Tls {
           let cert_eof = 0
           const certificates = []
           const certificatesLength = buf.readUint24()
-          do {
+
+          while (cert_eof<certificatesLength) {
             const certLen = buf.readUint24()
             const cert = buf.readBytes(certLen)
             //todo parse certificate in detail
             certificates.push(cert)
-            cert_eof +=certLen
-          } while (cert_eof<certificatesLength)
+            cert_eof +=certLen+3
+          }
           data = {
             certificatesLength,
             certificates
@@ -272,6 +266,7 @@ export default class Tls {
   }
 
   parseRecord(buf: Buffer){
+
     const header = {
       type:buf.readUint8(),
       version:buf.readUint16(),
@@ -296,39 +291,40 @@ export default class Tls {
       header,
       content
     }
-
     return record
   }
   
   async parse() {
+    console.log('parse')
 
-    const buffer = this.tcp.buffer
-    const bufferLength = buffer.offset
+    const bufferOffset = this.tcp.buffer.offset
 
-    if (buffer.peekUint16(0) === 0x1503) {
+    if (this.tcp.buffer.peekUint16(0) === 0x1503) {
       throw ('Server Alert.')
     }
 
-    if (buffer.offset >= RECORD_HEADER_LEN) {
-      const contentLength = buffer.peekUint16(3)
+    if (bufferOffset >= RECORD_HEADER_LEN) {
+      const contentLength = this.tcp.buffer.peekUint16(3)
       const recordLength = RECORD_HEADER_LEN + contentLength
 
-      if(recordLength<=bufferLength){
-        const recordBuf = buffer.shift(recordLength)
+      if(recordLength<=bufferOffset) {
+        const recordBuf = this.tcp.buffer.shift(recordLength)
         const record = this.parseRecord(recordBuf)
+        console.log('parsed record',record)
         this.records.push(record)
       }
+      
     }
   }
 
   async receiveRecords(){
     //todo timeout
     while (!this.stepFinished()){
+      // console.log('loop',this.tcp.buffer.bytes,this.tcp.buffer.offset)
       this.parse()
-      await sleep(20)
+      await sleep(1000)
     }
-
-    console.log(this.step,this.records)
+    console.log('received',this.step,this.records)
 
     //todo check records
     //tls version

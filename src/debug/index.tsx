@@ -2,8 +2,8 @@ import styled from 'styled-components'
 import MPCControler from '../mpc'
 
 const Conatiner = styled.div`
-  width: 100vw;
-  height: 100vh;
+  width: 400px;
+  height: 400px;
   color: #FFFFFF;
   background: #000000;
 `
@@ -37,10 +37,28 @@ export default function DebugPage() {
 
   }
 
+  const print = () => {
+    chrome.runtime.sendMessage({
+      action: 'xxx'
+    })
+  }
+
+  const sendClientHello = async () => {
+    chrome.runtime.sendMessage({
+      action: 'clientHello'
+    })
+  }
+
   return <Conatiner>
     <Title>Debugger</Title>
     <ButtonContainer>
       <Button onClick={runMpc}>Run MPC</Button>
+    </ButtonContainer>
+    <ButtonContainer>
+      <Button onClick={print}>print</Button>
+    </ButtonContainer>
+    <ButtonContainer>
+      <Button onClick={sendClientHello}>sendClientHello</Button>
     </ButtonContainer>
   </Conatiner>
 }

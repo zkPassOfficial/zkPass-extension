@@ -41,27 +41,30 @@ export default class Buffer{
   }
 
   region(begin:number,byteLength:number){
-    const buffer = new Buffer({byteLength})
-    buffer.writeBytes(this.peekBytes(begin,length))
-    return buffer
+    const chunk = new Buffer({byteLength})
+    chunk.writeBytes(this.peekBytes(begin,length))
+    return chunk
   }
 
   shift(size: number){
-    size = size>>>0
+    // size = size>>>0
     // if(size>=this.bytes.length){
     //   return this.drain()
     // }else{
-    const head = this.bytes.slice(0, size) 
-    const tail = this.bytes.slice(size, this.bytes.length-size)
+    // console.log('before shift',this.bytes,this.bytes.length,this.offset,this.cursor)
+    const head = this.bytes.slice(0, size)
+    const tail = this.bytes.slice(size)
     this.bytes = tail
     this.cursor = Math.max(0,this.cursor-size)
     this.offset = Math.max(0,this.offset-size)
+    // console.log('after shift head',head)
+    // console.log('after shift tail',this.bytes,this.bytes.length,this.offset,this.cursor)
     return new Buffer({bytes:head})
     // }
   }
 
-  seek(cursor:number){
-    this.cursor = cursor
+  seek(pos:number){
+    this.cursor = pos
   }
 
   write(value: number, byteLength: number) {
@@ -112,13 +115,18 @@ export default class Buffer{
   }
 
   read(byteLength: number){
+
+    if(byteLength ==0){
+      throw 'can not read 0 length byte'
+    }
+
     let offset = byteLength >>> 0
 
-    let val = this.bytes[--offset]
+    let val = this.bytes[this.cursor + --offset]
     let mul = 1
 
     while (offset > 0 && (mul *= 0x100)) {
-      val += this.bytes[--offset] * mul
+      val += this.bytes[this.cursor + --offset] * mul
     }
 
     this.cursor += byteLength
