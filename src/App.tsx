@@ -4,7 +4,7 @@ import DebugPage from './debug'
 const env = process.env.REACT_APP_RUN_TYPE
 
 function App() {
-  if(env === 'debug'){
+  if(env === 'development'){
     return <DebugPage/>
   }
 

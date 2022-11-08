@@ -31,28 +31,49 @@
  * Application Data              <------->     Application Data
 */
 
-export class TLS {
-  constructor() { }
+// export class TLS {
+// constructor() { }
 
-  createClientHello() { }
+// createClientHello() { }
 
-  sendHelloToServer() { }
+// sendHelloToServer() { }
 
-  parseServerHello() { }
+// parseServerHello() { }
 
-  parseCertificate() { }
+// parseCertificate() { }
 
-  parseServerKeyExchange() { }
+// parseServerKeyExchange() { }
 
-  receiveAndParseServerHello() { }
+// receiveAndParseServerHello() { }
 
-  createClientKeyExchange() { }
+// createClientKeyExchange() { }
 
-  createAndSendRequest() { }
+// createAndSendRequest() { }
 
-  receiveAndParseResponse() { }
+// receiveAndParseResponse() { }
 
-  clientFinished() { }
+// clientFinished() { }
 
-  serverFinished() { }
+// serverFinished() { }
+// }
+import Tls from './tls'
+chrome.runtime.onMessage.addListener(data => {
+  console.log('onMessage', data)
+  switch (data.action) {
+    case 'clientHello':
+      sendClientHello()
+      break
+    case 'xxx':
+      console.log('xxx')
+      // send()
+      break
+  }
+
+})
+
+async function sendClientHello(){
+  const tls = new Tls('knljmfaeheifllbnnbepjibnjlecjekd','github.com',443)
+  console.log('sending')
+  await tls.sendClientHello()
+  console.log('sent')
 }

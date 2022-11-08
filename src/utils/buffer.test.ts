@@ -88,8 +88,35 @@ describe('numeric',()=>{
       buffer.writeUint8(i)
     }
 
-    const chunk = buffer.shift(5)
-    expect(chunk.bytes).toEqual(new Uint8Array([ 0,1,2,3,4 ]))
+    const chunk1 = buffer.shift(5)
+    console.log('chunk1',chunk1)
+    console.log('buffer1',buffer)
+    expect(chunk1.bytes).toEqual(new Uint8Array([ 0,1,2,3,4 ]))
+    expect(buffer.bytes.length).toBe(128-chunk1.bytes.length)
+
+    const chunk2 = buffer.shift(3)
+    console.log('chunk2',chunk2)
+    console.log('buffer2',buffer)
+    expect(chunk2.bytes).toEqual(new Uint8Array([ 5,6,7 ]))
+    expect(buffer.bytes.length).toBe(128-chunk1.bytes.length-chunk2.bytes.length)
+  })
+
+  test('temp',()=>{
+    const buf = new Buffer({byteLength:5})
+    buf.writeBytes(new Uint8Array([ 0x22,0x3,0x3,0,0x48 ]))
+
+    // console.log('buffer',buf)
+
+    const header = {
+      type:buf.readUint8(),
+      version:buf.readUint16(),
+      length:buf.readUint16()
+    }
+
+    console.log('header',header)
+
+    expect(header.length).toBe(0x48)
+    expect(header.version).toBe(0x0303)
   })
 
 })

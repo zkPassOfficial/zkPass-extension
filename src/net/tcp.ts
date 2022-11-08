@@ -77,11 +77,13 @@ export default class Tcp{
 
     this.timer = setInterval(async () => {
       const data = await this.receive()
-      // if(data?.keys.length>0){
-      if(data){
-        this.buffer.writeBytes(new Uint8Array(data.values))
+      if(data && Object.keys(data).length>0){
+        this.buffer.writeBytes(new Uint8Array(Object.values(data)))
+
+        console.log('tcp:receive chunk',Object.values(data),Object.values(data).length)
+        console.log('tcp:receive buffer',this.buffer)
       }
-    }, 100)
+    }, 2000)
 
     return res.data
   }
@@ -93,7 +95,7 @@ export default class Tcp{
       //res.data: {0: 69, 1: 99, 2: 104, 3: 111, 4: 32}
       return res.data
     }else{
-      console.log('Connection Error',this.state)
+      console.error('Connection Error',this.state)
     }
   }
 
@@ -103,11 +105,12 @@ export default class Tcp{
       return res.data
     }
     else{
-      console.log('Connection Error',this.state)
+      console.error('Connection Error',this.state)
     }
   }
 
   async close() {   
+    console.log('TCP: close')
     if(this.state === ConnectState.CONNECTED){
       this.state = ConnectState.CLOSING
       await this._sendMessage({ action: 'close', socketId: this.socketId })
