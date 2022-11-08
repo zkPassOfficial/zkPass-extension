@@ -3,6 +3,8 @@ import { uint2bytesBE } from '../utils/numeric'
 import { str2bytes } from '../utils/string'
 import Tcp from './tcp'
 import Buffer from '../utils/buffer'
+import { Certificate } from '@peculiar/asn1-x509'
+import { AsnParser } from '@peculiar/asn1-schema'
 
 const RecordSchema = {
   Version : 0x0303,//tls 1.2
@@ -254,8 +256,8 @@ export default class Tls {
 
           while (cert_eof<certificatesLength) {
             const certLen = buf.readUint24()
-            const cert = buf.readBytes(certLen)
-            //todo parse certificate in detail
+            const der = buf.readBytes(certLen)
+            const cert = AsnParser.parse(der, Certificate)
             certificates.push(cert)
             cert_eof +=certLen+3
           }
@@ -289,6 +291,7 @@ export default class Tls {
     }
 
     this.handshake.received.set(header.type, data)
+    console.log('handshake',header,data)
     return {header,data}
   }
 

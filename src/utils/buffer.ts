@@ -42,7 +42,7 @@ export default class Buffer{
 
   region(begin:number,byteLength:number){
     const chunk = new Buffer({byteLength})
-    chunk.writeBytes(this.peekBytes(begin,length))
+    chunk.writeBytes(this.peekBytes(begin,byteLength))
     return chunk
   }
 
