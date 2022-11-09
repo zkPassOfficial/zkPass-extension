@@ -1,4 +1,4 @@
-import { assert } from 'console'
+import { assert } from '../utils'
 
 export default class OTDependencies {
   encBlocks: number //aes-gcm aad+1 len+1
@@ -21,6 +21,12 @@ export default class OTDependencies {
 
     //client already have 1, 2, 3 
     const shareGroup = [ undefined, el, el, el ]
+
+    Object.keys(this.oddTable).forEach((key)=>{
+      if(parseInt(key) <= this.maxPower){
+        shareGroup[parseInt(key)]= el
+      }
+    })
 
     const needOTShare: Set<number> = new Set<number>()
 
@@ -60,8 +66,10 @@ export default class OTDependencies {
         continue
       }
 
-      for(let j=i; j * 2 <= blocks; j += 2){
-        if (!shareGroup[j]){
+      let j = i
+      while (j * 2 <= blocks){
+        j = j * 2
+        if (shareGroup[j] == undefined){
           shareGroup[j] = el
         }
       }
@@ -69,12 +77,12 @@ export default class OTDependencies {
   }
 
   splitShareByExited(share: (Uint8Array | undefined)[], targetNumber: number){
-    for (let i=1; i < share.length; i++){
-      if (share[i] !== undefined){
+    
+    for (let i=1; i < targetNumber; i++){
+      if (share[i] == undefined){
         continue
       }
-
-      for (let j=targetNumber; j > 0; j--){
+      for (let j=i; j< targetNumber; j++){        
         if (share[j] == undefined){
           continue
         }
@@ -90,7 +98,7 @@ export default class OTDependencies {
 
     assert(count <= 1026, 'The maximum number of blocks is exceeded')
 
-    const entry = Object.entries(this.powerBlockSizeMap).find((key, value) => value >= count) || [ '0', 0 ]
+    const entry = Object.entries(this.powerBlockSizeMap).find(([ , value ]) => value >= count) || [ '0', 0 ]
 
     return parseInt(entry[0])
   }

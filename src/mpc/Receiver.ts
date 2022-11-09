@@ -18,7 +18,6 @@ export default class Receiver extends OTCommon {
   rBits: Bits
   maskArr: Uint8Array
   sodium?: any
-
   cBitsSend = 0
   receivedCount = 0
   constructor(count: number) {
@@ -37,14 +36,10 @@ export default class Receiver extends OTCommon {
   async keySetup() {
     this.seedS = getRandom(16)
     const seedCommit = await sha256(this.seedS)
-    // const r = getRandom(this.totalCount / 8)
-    // console.log('r', r)
-    const r = new Uint8Array(33).fill(1)
+    const r = getRandom(this.totalCount/8)
     const R = this.extendRTo128(r)
-    this.rBits = u8Array2Bits(r);
-
+    this.rBits = u8Array2Bits(r).reverse();
     [ this.T0, this.T1 ] = this.secretShare(R)
-
     this.sKeyR = this.sodium?.crypto_core_ristretto255_scalar_random()
     this.pKeyS = this.sodium?.crypto_scalarmult_ristretto255_base(this.sKeyR)
     return [ this.pKeyS, seedCommit ]
@@ -52,27 +47,26 @@ export default class Receiver extends OTCommon {
 
   async extensionSetup(keys: Uint8Array, seedS: Uint8Array) {
     if (!this.T0 || !this.T1 || !this.seedS || !this.rBits) return []
-
     assert(keys.length == 128 * 32)
     assert(seedS.length == 16)
 
     const encCols = []
-
     const T0 = this.transposeMatrix(this.T0)
     const T1 = this.transposeMatrix(this.T1)
-    console.log('T1', this.T1[30])
+
     const pKeyS_arr = splitArray(keys, 32)
 
     for (let i = 0, len = pKeyS_arr.length; i < len; i++) {
       const pKeyS = pKeyS_arr[i]
       const k0 = this.sodium?.crypto_generichash(16, this.sodium?.crypto_scalarmult_ristretto255(this.sKeyR, pKeyS))
       encCols.push(await AESCTRencrypt(k0, T0[i]))
-
+      
       const sub = this.sodium?.crypto_core_ristretto255_sub(pKeyS, this.pKeyS)
       const k1 = this.sodium?.crypto_generichash(16, this.sodium?.crypto_scalarmult_ristretto255(this.sKeyR, sub))
       encCols.push(await AESCTRencrypt(k1, T1[i]))
+      
     }
-
+    
     const seed = await this.combineSeedShare(this.seedS, seedS, this.totalCount)
 
     let x = new Uint8Array(16).fill(0)
@@ -83,6 +77,7 @@ export default class Receiver extends OTCommon {
       if (this.rBits[i] == 1) {
         x = xor(x, rand)
       }
+
       t = xor(t, this.ncbm128(this.T0[i], rand))
     }
 

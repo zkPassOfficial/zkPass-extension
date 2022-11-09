@@ -4,6 +4,7 @@ import bitwise from 'bitwise'
 import { Bits, Byte, UInt8 } from 'bitwise/types'
 import { isEqual } from 'lodash'
 import NodeSalsa20 from 'node-salsa20'
+import { bytes2uintBE } from './numeric'
 
 export const equalArray = (a: Array<any> | Uint8Array, b: Array<any> | Uint8Array): boolean => isEqual(a, b)
 
@@ -46,16 +47,28 @@ export const int2U8Array = (i: number | bigint, size?: number): Uint8Array => {
   return new Uint8Array(arr)
 }
 
-export const u8Array2Int = (n: Uint8Array): number => Buffer.from(n).readUint8(0)
+export const u8Array2Int = (n: Uint8Array) => {
+  if(n.length <= 8) return bytes2uintBE(n)
+  const str = Array.from(n).map(b=>{
+    let strNum = b.toString(16)
+    if(strNum.length == 1) strNum = `0${strNum}`
+    return strNum
+  }).join('')
+
+  return BigInt(`0x${str}`)
+
+}
 
 export const u8Array2Bits = (n: Uint8Array): Bits => {
-  const byte_arr = []
-
-  for (let i = 0; i < n.length; i++) {
-    byte_arr.push(int2ba(n[i] as UInt8))
+  const bits = Array(n.length * 8)// little endian
+  let index = 0
+  for (let i = n.length - 1; i >= 0; i--) {
+    for (let j = 0; j < 8; j++) {
+      bits[index] = (n[i] >> j) & 0x01
+      index++
+    }
   }
-
-  return bytes2Bits(byte_arr)
+  return bits
 }
 
 export const str2Bits = (s: string): Array<0 | 1> => bitwise.string.toBits(s)
@@ -87,7 +100,17 @@ export const bytes2Bits = (ba: Byte[]): Bits => {
   return bitsArray
 }
 
-export const bits2U8Array = (bits: Bits): Uint8Array => new Uint8Array(bits2Bytes(bits).map(b => ba2int(b)))
+export const bits2U8Array = (bits: Bits): Uint8Array => {
+  const ba = new Uint8Array(bits.length/8)
+  for (let i=0; i < ba.length; i++){
+    let sum = 0
+    for (let j=0; j < 8; j++){
+      sum += bits[i*8+j] * (2**j)
+    }
+    ba[ba.length-1-i] = sum
+  }
+  return ba
+}
 
 export const bits2Bytes = (bits: Bits): Byte[] => {
   assert(bits.length % 8 === 0)
@@ -161,3 +184,22 @@ export const Salsa20 = (key: Uint8Array, data: Uint8Array) => {
 export const pad = (s: string): string => s.length % 2 === 0 ? s : `0${s}`
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve , ms))
+
+export const parsePem=(pem : string)=>{
+  const code_arr = pem.split('\n').map(item =>{
+    if (item.trim().length > 0
+        && item.indexOf('-BEGIN CERTIFICATE-') < 0
+        && item.indexOf('-BEGIN PUBLIC KEY-') < 0
+        && item.indexOf('-END PUBLIC KEY-') < 0
+        && item.indexOf('-END CERTIFICATE-') < 0 ) {
+      return item.trim()
+    }
+    return undefined
+  }).filter(v=> v !== undefined).join('')
+
+  console.log('pemstr', code_arr)
+  
+  const dec = atob(code_arr).split('').map(c=> c.charCodeAt(0))
+
+  return new Uint8Array(dec).slice(26)
+}
