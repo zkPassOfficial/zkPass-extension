@@ -187,14 +187,16 @@ export default class Tls {
 
   async sendClientHello() {
     const record = this.createClientHello()
-    const socketId = await this.tcp.connect()
+    const socketId = await this.connect()
 
     this.step = Step.CLIENT_HELLO
-    const sendRes = await this.tcp.send(record)
+    const sendRes = await this.send(record)
 
     this.step = Step.SERVER_HELLO
     await this.receiveRecords()
     this.step = Step.CLIENT_FINISH
+
+    //2pc to calc client public key
   }
 
   stepFinished(){
@@ -405,5 +407,18 @@ export default class Tls {
     return trustedCerts
   }
 
+  async connect(){
+    const socketId = await this.tcp.connect()
+    return socketId
+  }
+
+  async send(data:Array<any>){
+    const sendRes = await this.tcp.send(data)
+    return sendRes
+  }
+
+  async close(){
+    await this.tcp.close()
+  }
 
 }
