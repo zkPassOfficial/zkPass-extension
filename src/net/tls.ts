@@ -1,10 +1,10 @@
-import { getRandom, sleep } from '../utils'
+import { getRandom, sleep ,loadRes, b64decode} from '../utils'
 import { uint2bytesBE } from '../utils/numeric'
 import { str2bytes } from '../utils/string'
 import Tcp from './tcp'
 import Buffer from '../utils/buffer'
-import { Certificate } from '@peculiar/asn1-x509'
-import { AsnParser } from '@peculiar/asn1-schema'
+import * as asn1js from 'asn1js'
+import {Certificate, CertificateChainValidationEngine} from 'pkijs'
 
 const RecordSchema = {
   Version : 0x0303,//tls 1.2
@@ -210,7 +210,24 @@ export default class Tls {
     }
   }
 
-  parseHandshake(buf: Buffer){
+  async verifyCertificate(certs:Certificate[]){
+
+    const trustedCerts = await this.loadTrustStore()
+
+    //todo check ocsp & crls
+    const chainEngine = new CertificateChainValidationEngine({
+      certs,
+      trustedCerts,
+      checkDate: new Date()
+    })
+  
+    const valid = await chainEngine.verify()
+    if(valid.result == false){
+      throw valid.resultMessage
+    }
+  }
+
+  async parseHandshake(buf: Buffer){
 
     const header = {
       type: buf.readUint8(),
@@ -253,14 +270,18 @@ export default class Tls {
           let cert_eof = 0
           const certificates = []
           const certificatesLength = buf.readUint24()
+          const certHeaderLen = 3
 
           while (cert_eof<certificatesLength) {
             const certLen = buf.readUint24()
             const der = buf.readBytes(certLen)
-            const cert = AsnParser.parse(der, Certificate)
+            const asn1 = asn1js.fromBER(der.buffer)
+            const cert = new Certificate({ schema: asn1.result })
             certificates.push(cert)
-            cert_eof +=certLen+3
+            cert_eof += certHeaderLen + certLen
           }
+
+          await this.verifyCertificate(certificates)
           data = {
             certificatesLength,
             certificates
@@ -272,6 +293,11 @@ export default class Tls {
           const curveType = buf.readUint8()
           const namedCurve = buf.readUint16()
           const pubkeyLength = buf.readUint8()
+          const namedCurveCompressed = buf.peekUint8(buf.cursor) === 0x04
+          if(namedCurveCompressed){
+            throw 'we are not support compressed named curve for now!'
+            //todo support it!
+          }
           const pubkey = buf.readBytes(pubkeyLength)
           this.handshake.serverPubkey = pubkey
           const signatureAlgorithm = buf.readUint16() //hash & signature
@@ -295,7 +321,7 @@ export default class Tls {
     return {header,data}
   }
 
-  parseRecord(buf: Buffer){
+  async parseRecord(buf: Buffer){
 
     const header = {
       type:buf.readUint8(),
@@ -311,7 +337,7 @@ export default class Tls {
     let content
 
     if(header.type === RecordSchema.ContentType.HANDSHAKE){
-      content = this.parseHandshake(buf)
+      content = await this.parseHandshake(buf)
       this.handshake.bytes.writeBytes(buf.peekBytes(5, HANDSHAKE_HEADER_LEN + content.header.length))
     }else{
       throw('not implemented now!')
@@ -339,11 +365,10 @@ export default class Tls {
 
       if(recordLength<=bufferOffset) {
         const recordBuf = this.tcp.buffer.shift(recordLength)
-        const record = this.parseRecord(recordBuf)
+        const record = await this.parseRecord(recordBuf)
         console.log('parsed record',record)
         this.records.push(record)
       }
-      
     }
   }
 
@@ -351,7 +376,7 @@ export default class Tls {
     //todo timeout
     while (!this.stepFinished()){
       // console.log('loop',this.tcp.buffer.bytes,this.tcp.buffer.offset)
-      this.parse()
+      await this.parse()
       await sleep(1000)
     }
     console.log('received',this.step,this.records)
@@ -363,5 +388,22 @@ export default class Tls {
     //Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 [0xc0, 0x2f]
     //all handshake signature
   }
+
+  async loadTrustStore(){
+    const truststore = await loadRes('/truststore.txt')
+    const rootCAs = truststore.replace(/\r\n/g,'').split(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----}?/g).filter(it => it.length > 0)
+      
+    const trustedCerts = new Array<Certificate>()
+  
+    rootCAs.forEach(it => {
+      const der = b64decode(it)
+      const asn1 = asn1js.fromBER(der.buffer)
+      const cert = new Certificate({ schema: asn1.result })
+      trustedCerts.push(cert)
+    })
+
+    return trustedCerts
+  }
+
 
 }

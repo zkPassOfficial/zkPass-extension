@@ -203,3 +203,26 @@ export const parsePem=(pem : string)=>{
 
   return new Uint8Array(dec).slice(26)
 }
+
+export async function loadRes(filePath: string){
+  try{
+    const pem = await fetch(filePath)
+    return pem.text()
+  }catch(error){
+    console.log('load pem file failed', error)
+    throw('load pem file failed')
+  }
+}
+
+export function b64decode(str:string) {
+  let dec
+  if (typeof(window) === 'undefined') {
+    dec = Buffer.from(str, 'base64')
+  }
+  else {
+    dec = atob(str).split('').map(function(c) {
+      return c.charCodeAt(0)
+    })
+  }
+  return new Uint8Array(dec)
+}
