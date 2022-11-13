@@ -89,15 +89,6 @@ class HandshakeData {
   received = new Map()
 }
 
-// class SignedCertificateData {
-//   version?:number
-//   serrialNumber?:Uint8Array
-//   signature:
-// }
-
-// class CertificateData {
-
-// }
 
 export default class Tls {
 
@@ -184,6 +175,38 @@ export default class Tls {
 
     return record
   }
+  
+  createClientFinished(pubkey:Uint8Array,data:Uint8Array,tag:Uint8Array) {
+
+    // client key exchange
+    const ckeBuf = new Buffer()
+    ckeBuf.writeUint8(0x10) // Handshake type: Client Key Exchange
+    ckeBuf.writeUint24(0x21) // Length
+    ckeBuf.writeUint16(0x20) // Pubkey Length: 32
+    ckeBuf.writeBytes(pubkey) //pubkey
+    const ckeBytes = ckeBuf.drain()
+    this.handshake.bytes.writeBytes(ckeBytes)
+
+    const recordBuf = new Buffer()
+
+    // write client key exchange record
+    recordBuf.writeBytes(new Uint8Array([ 0x16, 0x03, 0x03, 0x00, 0x46 ]))// record header(Type: Handshake, Version: TLS 1.2, Length) 
+    recordBuf.writeBytes(ckeBytes) // client key exchange
+    
+    // write change cipher spec record
+    recordBuf.writeBytes(new Uint8Array([ 0x14, 0x03, 0x03, 0x00, 0x01, 0x01 ]))
+
+    // write client finished record
+    recordBuf.writeUint8(0x16)
+    recordBuf.writeUint16(0x0303)
+    recordBuf.writeUint16(0x28)
+    recordBuf.writeUint8(0x14) // Finished
+    recordBuf.writeUint24(0x0c) // Length
+    recordBuf.writeBytes(data)
+    recordBuf.writeBytes(tag)    
+
+    return recordBuf.drain()
+  }
 
   async sendClientHello() {
     const record = this.createClientHello()
@@ -195,8 +218,9 @@ export default class Tls {
     this.step = Step.SERVER_HELLO
     await this.receiveRecords()
     this.step = Step.CLIENT_FINISH
+    // const clientFinishRecords = this.createClientFinished()
+    // this.send([ ...clientFinishRecords ])
 
-    //2pc to calc client public key
   }
 
   stepFinished(){

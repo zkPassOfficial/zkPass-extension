@@ -23,7 +23,7 @@ export default class Buffer{
   }
 
   drain(){
-    const bytes = this.region(0,this.offset)
+    const bytes = this.peekBytes(0,this.offset) //this.region(0,this.offset)
     this.bytes = new Uint8Array(BUFFER_GROW_SIZE)
     this.offset = 0
     this.cursor = 0

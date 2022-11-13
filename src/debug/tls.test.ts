@@ -32,7 +32,7 @@ export async function testCert(){
   }
   const derIntermediate = intermediateBuffer.drain()
 
-  const asn1Intermediate = asn1js.fromBER(derIntermediate.bytes)
+  const asn1Intermediate = asn1js.fromBER(derIntermediate)
   const certIntermediate = new Certificate({ schema: asn1Intermediate.result })
   console.log('certIntermediate',certIntermediate)
 
@@ -43,7 +43,7 @@ export async function testCert(){
     leafBuffer.writeUint8(num)
   }
   const derLeaf = leafBuffer.drain()
-  const asn1Leaf = asn1js.fromBER(derLeaf.bytes)
+  const asn1Leaf = asn1js.fromBER(derLeaf)
   const certLeaf = new Certificate({ schema: asn1Leaf.result })
   console.log('certLeaf',certLeaf)
   

@@ -48,6 +48,7 @@ describe('numeric',()=>{
     const a = 0x12345678
     buffer.writeUint32(a)
     expect(new Uint8Array([ 0x12,0x34,0x56,0x78 ])).toEqual(buffer.readBytes(4))
+    expect(new Uint8Array([ 0x12,0x34,0x56,0x78 ])).toEqual(buffer.drain())
   })
 
   test('grow',()=>{
