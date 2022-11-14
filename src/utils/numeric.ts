@@ -125,3 +125,12 @@ export function bytes2intBE (bytes:Uint8Array) {
 
   return val
 }
+
+export function bytes2BigInt (bytes: Uint8Array): bigint {
+  let ret = 0n
+  for (const i of bytes.values()) {
+    const bi = BigInt(i)
+    ret = (ret << 8n) + bi
+  }
+  return ret
+}

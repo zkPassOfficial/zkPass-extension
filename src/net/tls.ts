@@ -1,10 +1,11 @@
 import { getRandom, sleep ,loadRes, b64decode} from '../utils'
-import { uint2bytesBE } from '../utils/numeric'
+import { uint2bytesBE ,bytes2BigInt} from '../utils/numeric'
 import { str2bytes } from '../utils/string'
 import Tcp from './tcp'
 import Buffer from '../utils/buffer'
 import * as asn1js from 'asn1js'
 import {Certificate, CertificateChainValidationEngine} from 'pkijs'
+
 
 const RecordSchema = {
   Version : 0x0303,//tls 1.2
@@ -83,9 +84,9 @@ const HANDSHAKE_HEADER_LEN = 4
 
 class HandshakeData {
   bytes = new Buffer()
-  clientRandom?: Uint8Array
-  serverRandom?: Uint8Array
-  serverPubkey?: Uint8Array
+  clientRandom = new Uint8Array()
+  serverRandom = new Uint8Array()
+  serverPubkey = new Uint8Array()
   received = new Map()
 }
 
@@ -218,9 +219,20 @@ export default class Tls {
     this.step = Step.SERVER_HELLO
     await this.receiveRecords()
     this.step = Step.CLIENT_FINISH
+
+    const pubkeyBytes = this.handshake.serverPubkey
+    const half = (pubkeyBytes.length - 1) / 2
+
+    console.log('bytes',pubkeyBytes)
+
+    const xBytes = pubkeyBytes.slice(1, half+1)
+    const yBytes = pubkeyBytes.slice(half + 1, pubkeyBytes.length)
+
+    const x = bytes2BigInt(xBytes)
+    const y = bytes2BigInt(yBytes)
+
     // const clientFinishRecords = this.createClientFinished()
     // this.send([ ...clientFinishRecords ])
-
   }
 
   stepFinished(){
