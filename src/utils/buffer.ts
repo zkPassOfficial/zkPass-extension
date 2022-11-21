@@ -113,6 +113,11 @@ export default class Buffer{
   writeUint32(value: number){
     this.write(value,4)
   }
+  
+  writeUint64(value: number){
+    this.write(value,8)
+  }
+
 
   read(byteLength: number){
 
@@ -153,6 +158,10 @@ export default class Buffer{
 
   readUint32(){
     return this.read(4)
+  }
+
+  readUint64(){
+    return this.read(8)
   }
 
   peek(cursor:number, byteLength: number){

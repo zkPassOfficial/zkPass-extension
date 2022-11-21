@@ -7,7 +7,9 @@ import {
   bytes2uintBE,
   bytes2uintLE,
   bytes2intBE,
-  bytes2intLE
+  bytes2intLE,
+  bytes2Hex,
+  hex2Bytes
 } from './numeric'
 
 describe('numeric',()=>{
@@ -48,6 +50,14 @@ describe('numeric',()=>{
     const hex = -0x123456
     const int = bytes2intLE(int2bytesLE(hex,3))
     expect(int).toBe(hex)
+  })
+
+  test('bytes2hex(uint2bytesBE(0x1234567,4))=01234567',()=>{
+    const num = 0x1234567
+    const bytes = uint2bytesBE(num,4)
+    const hex = bytes2Hex(bytes)
+    expect(hex).toBe('01234567')
+    expect(bytes).toEqual(hex2Bytes(hex))
   })
 
 })

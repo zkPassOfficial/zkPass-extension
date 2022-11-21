@@ -134,3 +134,16 @@ export function bytes2BigInt (bytes: Uint8Array): bigint {
   }
   return ret
 }
+
+export function bytes2Hex(bytes: Uint8Array) {
+  return Array.from(bytes, byte => {
+    return ('0' + (byte & 0xFF).toString(16)).slice(-2)
+  }).join('')
+}
+
+export function hex2Bytes(hex:string) {
+  const bytes = []
+  for (let c = 0; c < hex.length; c += 2)
+    bytes.push(parseInt(hex.substring(c, c + 2), 16))
+  return new Uint8Array(bytes)
+}
