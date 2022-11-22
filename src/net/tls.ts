@@ -1,10 +1,12 @@
-import { getRandom, sleep ,loadRes, b64decode} from '../utils'
-import { uint2bytesBE ,bytes2BigInt} from '../utils/numeric'
-import { str2bytes } from '../utils/string'
+import { getRandom, sleep ,loadRes, b64decode,str2U8Array} from '../utils'
+import { uint2bytesBE ,bytes2BigInt,hex2Bytes,bytes2Hex} from '../utils/numeric'
 import Tcp from './tcp'
 import Buffer from '../utils/buffer'
 import * as asn1js from 'asn1js'
 import {Certificate, CertificateChainValidationEngine} from 'pkijs'
+import {hmac,Hash} from '../crypto/sha256'
+import { bytes2str,str2bytes } from '../utils/string'
+import { ec as ECC } from 'elliptic'
 
 
 const RecordSchema = {
@@ -111,6 +113,63 @@ export default class Tls {
     this.tcp = new Tcp(appId, host, port)
   }
 
+  //pseudo random function
+  prf(key:Uint8Array,seed:Uint8Array){
+    const a1 = hmac(key,seed)
+    const a2 = hmac(key,a1)
+    const p1 = hmac(key,new Uint8Array([ ...a1,...seed ]))
+    const p2 = hmac(key,new Uint8Array([ ...a2,...seed ]))
+    return new Uint8Array([ ...p1,...p2 ])
+  }
+
+  getMasterSecret(pms:Uint8Array,client_random:Uint8Array,server_random:Uint8Array){
+    const seed_buf = new Buffer()
+    seed_buf.writeBytes(str2U8Array('master secret'))
+    seed_buf.writeBytes(client_random)
+    seed_buf.writeBytes(server_random)
+    const seed = seed_buf.drain()
+    const key_block = this.prf(pms,seed)
+    return key_block.slice(0,48)
+  }
+
+  getKeys(ms:Uint8Array,client_random:Uint8Array,server_random:Uint8Array){
+    const seed_buf = new Buffer()
+    seed_buf.writeBytes(str2U8Array('key expansion'))
+    seed_buf.writeBytes(server_random)
+    seed_buf.writeBytes(client_random)
+    const seed = seed_buf.drain()
+
+    const key_block = this.prf(ms,seed)
+    const client_mac_key = key_block.slice(0,32)
+    const server_mac_key = key_block.slice(32,64)
+    const client_write_key = key_block.slice(64,80)
+    const server_write_key = key_block.slice(80,96)
+    return [ client_mac_key,server_mac_key,client_write_key,server_write_key ]
+  }
+
+  getVerifyData(ms:Uint8Array,handshake_hash:Uint8Array){
+    const seed_buf = new Buffer()
+    seed_buf.writeBytes(str2U8Array('client finished'))
+    seed_buf.writeBytes(handshake_hash)
+    const seed = seed_buf.drain()
+    const a1 = hmac(ms,seed)
+    const p1 = hmac(ms,new Uint8Array([ ...a1,...seed ]))
+    const verify_data = p1.slice(0,12)
+    return verify_data
+  }
+
+  getMac(fragment:Uint8Array,client_mac_key:Uint8Array){
+    const buf = new Buffer()
+    buf.writeUint64(0)//sequence number
+    buf.writeUint8(0x16)//record type: handshake
+    buf.writeUint16(0x0303)//version tlsv1.2
+    buf.writeUint16(0x10)//fragment length
+    buf.writeBytes(fragment)//12
+    const data = buf.drain()
+    return hmac(client_mac_key,data)
+  }
+
+
   createClientHello() {
     this.handshake.clientRandom = getRandom(32)
 
@@ -152,7 +211,8 @@ export default class Tls {
 
     buf.writeUint8(0x00)// Session ID Length
     buf.writeUint16(0x02)// Cipher Suites Length
-    buf.writeUint16(0xc02f)// Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    // buf.writeUint16(0xc02f)// Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    buf.writeUint16(0xc027) //Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
 
     buf.writeUint8(0x01)// Compression Methods Length
     buf.writeUint8(0x00)// Compression Methods: null
@@ -177,36 +237,34 @@ export default class Tls {
     return record
   }
   
-  createClientFinished(pubkey:Uint8Array,data:Uint8Array,tag:Uint8Array) {
+  createClientFinished(pubkey:Uint8Array,encrypted_handshake_message:Uint8Array,tag:Uint8Array) {
 
     // client key exchange
-    const ckeBuf = new Buffer()
-    ckeBuf.writeUint8(0x10) // Handshake type: Client Key Exchange
-    ckeBuf.writeUint24(0x21) // Length
-    ckeBuf.writeUint16(0x20) // Pubkey Length: 32
-    ckeBuf.writeBytes(pubkey) //pubkey
-    const ckeBytes = ckeBuf.drain()
-    this.handshake.bytes.writeBytes(ckeBytes)
+    const cke_buf = new Buffer()
+    cke_buf.writeUint8(0x10) // Handshake type: Client Key Exchange
+    cke_buf.writeUint24(0x21) // Length
+    cke_buf.writeUint16(0x20) // Pubkey Length: 32
+    cke_buf.writeBytes(pubkey) //pubkey
+    const cke_bytes = cke_buf.drain()
+    this.handshake.bytes.writeBytes(cke_bytes)
 
-    const recordBuf = new Buffer()
+    const record_buf = new Buffer()
 
     // write client key exchange record
-    recordBuf.writeBytes(new Uint8Array([ 0x16, 0x03, 0x03, 0x00, 0x46 ]))// record header(Type: Handshake, Version: TLS 1.2, Length) 
-    recordBuf.writeBytes(ckeBytes) // client key exchange
+    record_buf.writeBytes(new Uint8Array([ 0x16, 0x03, 0x03, 0x00, 0x46 ]))// record header(Type: Handshake, Version: TLS 1.2, Length) 
+    record_buf.writeBytes(cke_bytes) // client key exchange
     
     // write change cipher spec record
-    recordBuf.writeBytes(new Uint8Array([ 0x14, 0x03, 0x03, 0x00, 0x01, 0x01 ]))
+    record_buf.writeBytes(new Uint8Array([ 0x14, 0x03, 0x03, 0x00, 0x01, 0x01 ]))
 
     // write client finished record
-    recordBuf.writeUint8(0x16)
-    recordBuf.writeUint16(0x0303)
-    recordBuf.writeUint16(0x28)
-    recordBuf.writeUint8(0x14) // Finished
-    recordBuf.writeUint24(0x0c) // Length
-    recordBuf.writeBytes(data)
-    recordBuf.writeBytes(tag)    
+    record_buf.writeUint8(0x16)
+    record_buf.writeUint16(0x0303)
+    record_buf.writeUint16(0x50)
+    record_buf.writeBytes(encrypted_handshake_message)
+    record_buf.writeBytes(tag)
 
-    return recordBuf.drain()
+    return record_buf.drain()
   }
 
   async sendClientHello() {
@@ -222,17 +280,49 @@ export default class Tls {
 
     const pubkeyBytes = this.handshake.serverPubkey
     const half = (pubkeyBytes.length - 1) / 2
-
     console.log('bytes',pubkeyBytes)
-
     const xBytes = pubkeyBytes.slice(1, half+1)
     const yBytes = pubkeyBytes.slice(half + 1, pubkeyBytes.length)
+    // const x = bytes2BigInt(xBytes)
+    // const y = bytes2BigInt(yBytes)
+    const x = bytes2Hex(xBytes)
+    const y = bytes2Hex(yBytes)
 
-    const x = bytes2BigInt(xBytes)
-    const y = bytes2BigInt(yBytes)
 
-    // const clientFinishRecords = this.createClientFinished()
-    // this.send([ ...clientFinishRecords ])
+    const hasher = new Hash()
+    hasher.update(this.handshake.bytes.drain())//todo
+    const handshake_hash = hasher.digest()
+    
+    const ec = new ECC('p256')
+    const client_key = ec.genKeyPair()
+    const client_private_key = client_key.getPrivate()
+    // const client_public_key = client_key.getPublic()
+
+    const server_ec = new ECC('p256')
+    const server_public_key = server_ec.keyFromPublic({ x, y }, 'hex').getPublic()
+    const pms = server_public_key.mul(client_private_key).getX()
+
+    const ms = this.getMasterSecret(str2bytes(pms.toString()),this.handshake.clientRandom,this.handshake.serverRandom)
+    const [ client_mac_key, server_mac_key, client_write_key, server_write_key ] = this.getKeys(ms,this.handshake.clientRandom,this.handshake.serverRandom)
+    const iv = getRandom(16)
+    const verify_data = this.getVerifyData(ms,handshake_hash)
+    const tag = this.getMac(verify_data,client_mac_key)
+
+    const generic_block_cipher_buf = new Buffer()
+    generic_block_cipher_buf.writeBytes(iv)
+    generic_block_cipher_buf.writeUint8(22)
+    generic_block_cipher_buf.writeUint24(12)
+    generic_block_cipher_buf.writeBytes(verify_data)
+    generic_block_cipher_buf.writeBytes(tag)
+  
+    const padding = new Uint8Array(15).fill(15)
+    generic_block_cipher_buf.writeBytes(padding)
+    generic_block_cipher_buf.writeUint8(15)
+  
+    const generic_block_cipher = generic_block_cipher_buf.drain()
+  
+    const clientFinishRecords = this.createClientFinished(this.handshake.serverPubkey,generic_block_cipher,tag)
+    this.send([ ...clientFinishRecords ])
   }
 
   stepFinished(){

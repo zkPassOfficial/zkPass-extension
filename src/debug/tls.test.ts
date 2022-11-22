@@ -1,7 +1,13 @@
-import {loadRes, b64decode} from '../utils/index'
+import {loadRes, b64decode,getRandom,str2U8Array, u8Array2Str} from '../utils/index'
 import * as asn1js from 'asn1js'
 import {Certificate, CertificateChainValidationEngine} from 'pkijs'
+import { ec as ECC } from 'elliptic'
 import Buffer from '../utils/buffer'
+
+import { bytes2str } from '../utils/string'
+import { hex2Bytes,bytes2Hex } from '../utils/numeric'
+import {hmac} from '../crypto/sha256'
+
 
 export async function testCert(){
   console.log('temp')
@@ -82,3 +88,133 @@ export async function testCert(){
   // expect(header.length).toBe(0x48)
   // expect(header.version).toBe(0x0303)
 }
+
+// export function testHmac() {
+
+//   const ec = new ECC('p256')
+//   const client_key = ec.genKeyPair()
+//   const client_private_key = client_key.getPrivate()
+//   const client_public_key = client_key.getPublic()
+
+//   const server_key = ec.genKeyPair()
+//   const server_private_key = server_key.getPrivate()
+//   const server_public_key = server_key.getPublic()
+
+//   const pms = server_public_key.mul(client_private_key)
+//   // const client_pms = server_public_key.mul(client_private_key)
+//   // const server_pms = client_public_key.mul(server_private_key)
+
+//   // console.log(client_pms.getX().eq(server_pms.getX()))
+//   // console.log(client_pms.getY().eq(server_pms.getY()))
+
+//   const client_random = getRandom(16)
+//   const server_random = getRandom(16)
+
+//   function derivateMS(){
+//     const seedBuf = new Buffer()
+//     seedBuf.writeBytes(str2U8Array('master secret'))
+//     seedBuf.writeBytes(client_random)
+//     seedBuf.writeBytes(server_random)
+//     const seed = bytes2str(seedBuf.drain())
+  
+//     const a0 = seed
+//     const a1 = HmacSHA256(a0,pms.encode('hex',false))
+//     const a2 = HmacSHA256(a1,pms.encode('hex',false))
+//     const p1 = HmacSHA256(a1+seed,pms.encode('hex',false))
+//     const p2 = HmacSHA256(a2+seed,pms.encode('hex',false))
+//     const ms = (p1.concat(p2)).toString().slice(0,96)
+//     return ms 
+//   }
+
+//   function derivateKey(ms:string){
+//     const seedBuf = new Buffer()
+//     seedBuf.writeBytes(str2U8Array('key expansion'))
+//     seedBuf.writeBytes(server_random)
+//     seedBuf.writeBytes(client_random)
+//     const seed = bytes2str(seedBuf.drain())
+  
+//     const a0 = seed
+//     const a1 = HmacSHA256(a0,ms)
+//     const a2 = HmacSHA256(a1,ms)
+//     const p1 = HmacSHA256(a1+seed,ms)
+//     const p2 = HmacSHA256(a2+seed,ms)
+//     const key = (p1.concat(p2)).toString().slice(0,80)
+//     const client_mac_key = key.slice(0,32*2)
+//     const server_mac_key = key.slice(32*2,64*2)
+//     const client_write_key = key.slice(64*2,80*2)
+//     const server_write_key = key.slice(80*2,96*2)
+//     return [ client_mac_key,server_mac_key,client_write_key,server_write_key ]
+//   }
+
+//   // function getVerifyData(ms:string, handshake_hash:string){
+//   //   const seedBuf = new Buffer()
+//   //   seedBuf.writeBytes(str2U8Array('client finished'))
+//   //   seedBuf.writeBytes(str2U8Array(handshake_hash))
+//   //   const seed = bytes2str(seedBuf.drain())
+//   //   const a0=seed
+//   //   const a1 = HmacSHA256(a0,ms)
+//   //   const p1 = HmacSHA256(a1+seed,ms)
+//   //   const verify_data = p1.toString().slice(0,24)
+//   //   return verify_data
+//   // }
+
+//   function getVerifyData(key:string, handshake_hash:string){
+//     const seedBuf = new Buffer()
+//     seedBuf.writeBytes(str2U8Array('client finished'))
+//     seedBuf.writeBytes(str2U8Array(handshake_hash))
+//     const seed = bytes2str(seedBuf.drain())
+//     const a0=seed
+//     const a1 = HmacSHA256(a0,key)
+//     const p1 = HmacSHA256(a1+seed,key)
+//     const verify_data = p1.toString().slice(0,24)
+//     return verify_data
+//   }
+  
+
+//   function getMac(verify_data:string,client_mac_key:string){
+//     const data = u8Array2Str(new Uint8Array([ 0,0,0,0,0,0,0,0,22,3,3,0,16 ]))
+//     return HmacSHA256(data+verify_data,client_mac_key)
+//   }
+
+//   // export const pad = (s: string): string => s.length % 2 === 0 ? s : `0${s}`
+
+
+//   const ms = derivateMS()
+//   const [ client_mac_key, server_mac_key, client_write_key, server_write_key ] = derivateKey(ms)
+//   const iv = getRandom(16)
+//   const verify_data = getVerifyData(ms,'')
+//   const mac = getMac(verify_data,client_mac_key)
+//   const recordBuffer = new Buffer()
+//   recordBuffer.writeBytes(iv)
+//   recordBuffer.writeUint8(22)
+//   recordBuffer.writeUint24(12)
+//   recordBuffer.writeBytes(hex2Bytes(verify_data))
+//   recordBuffer.writeBytes(hex2Bytes(mac.toString()))
+
+//   const padding = new Uint8Array(15).fill(15)
+//   recordBuffer.writeBytes(padding)
+//   recordBuffer.writeUint8(15)
+
+//   const genericBlockCipher = recordBuffer.drain()
+  
+  
+//   // MAC(MAC_write_key, seq_num +
+//   //   TLSCompressed.type +
+//   //   TLSCompressed.version +
+//   //   TLSCompressed.length +
+//   //   TLSCompressed.fragment);
+
+
+//   //   struct {
+//   //     opaque IV[SecurityParameters.record_iv_length];  //16 bytes random
+//   //     block-ciphered struct {
+//   //         opaque content[TLSCompressed.length];   //16 bytes = 4 bytes header + 12 bytes verify_data
+//   //         opaque MAC[SecurityParameters.mac_length]; // 32 bytes
+//   //         uint8 padding[GenericBlockCipher.padding_length]; //15 bytes padding(0x0f)
+//   //         uint8 padding_length;// 1 byte
+//   //     };
+//   // } GenericBlockCipher;
+
+//   //8 bytes nounce + 4 bytes header + 12 bytes verify_data + 16 bytes tag
+
+// }
